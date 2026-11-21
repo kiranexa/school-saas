@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sekolah</title>
+  <style>
+    :root { --bg:#fff; --fg:#1a1a1a; --muted:#666; --brand:#1d4ed8; --card:#f5f6f8; }
+    @media (prefers-color-scheme: dark) { :root { --bg:#14161a; --fg:#eee; --muted:#9aa; --card:#1f2229; } }
+    body { margin:0; font:16px system-ui,sans-serif; background:var(--bg); color:var(--fg); }
+    header,main { max-width:960px; margin:0 auto; padding:16px; }
+    header { display:flex; justify-content:space-between; align-items:center; }
+    nav a { margin-left:12px; color:var(--brand); text-decoration:none; }
+    .card { background:var(--card); padding:12px 16px; border-radius:8px; margin:8px 0; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:8px; }
+    .grid img { width:100%; border-radius:8px; }
+    input,button { padding:8px 12px; margin:4px 0; font:inherit; }
+    button { background:var(--brand); color:#fff; border:0; border-radius:6px; cursor:pointer; }
+    table { width:100%; border-collapse:collapse; }
+    td,th { text-align:left; padding:6px; border-bottom:1px solid var(--card); }
+    .muted { color:var(--muted); }
+  </style>
+</head>
+<body><div id="app">Memuat…</div><script type="module" src="/src/main.js"></script></body>
+</html>
