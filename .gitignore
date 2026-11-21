@@ -3,3 +3,8 @@ dist
 .env
 .env.local
 supabase/.temp
+
+.env.e2e
+playwright-report
+test-results
+e2e/.fixtures.json

@@ -43,3 +43,6 @@ Jangan `npm i -g supabase` (gagal); selalu pakai `npx supabase`.
 - `PROGRESS.md` status dan langkah berikutnya
 - `prompts/` log prompt per tanggal
 - `.claude/skills/` panduan tugas berulang (migrasi, halaman admin, cek RLS)
+
+## Testing
+`npm run test:e2e` (Playwright; butuh `.env.e2e` dan project staging). Fitur baru wajib punya tes di `e2e/specs/`. Lihat `docs/04-testing.md`.
