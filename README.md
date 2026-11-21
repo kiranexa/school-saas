@@ -12,12 +12,11 @@ npm run dev
 
 ## Jalankan lokal penuh (database lokal via Docker)
 ```bash
-npm i -g supabase
-supabase init            # sekali saja; jangan timpa folder migrations
-supabase start           # butuh Docker; catat API URL & anon key
-supabase db reset        # menjalankan semua migrasi
+npx supabase init            # sekali saja; jangan timpa folder migrations
+npx supabase start           # butuh Docker; catat API URL & key
+npx supabase db reset        # menjalankan semua migrasi
 ```
-Isi `.env` dengan URL `http://127.0.0.1:54321` dan anon key dari `supabase status`.
+Isi `.env` dengan URL `http://127.0.0.1:54321` dan anon key dari `npx supabase status`.
 Buat user di Studio (http://127.0.0.1:54323) > Authentication, lalu jalankan `create_school(...)` di SQL Editor.
 
 ## Secrets GitHub (Settings > Secrets > Actions)

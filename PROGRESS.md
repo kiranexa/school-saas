@@ -7,7 +7,8 @@
 - [x] Workflow migrasi otomatis
 
 ## Berikutnya
-- [ ] CRUD siswa/guru/kelas di /admin
+- [x] CRUD siswa di /admin (perlu dites)
+- [ ] CRUD guru, kelas, mapel di /admin
 - [ ] Input nilai & absensi oleh guru
 - [ ] Modul tagihan/SPP
 - [ ] Edge Function onboarding sekolah

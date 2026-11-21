@@ -1,9 +1,10 @@
 import { sb } from './supabase.js';
+import { esc, layout } from './ui.js';
+import { siswaPage } from './pages/siswa.js';
 
 const app = document.getElementById('app');
 const STAFF = ['owner', 'kepala_sekolah', 'admin', 'tu', 'guru'];
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g,
-  (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const WRITERS = ['owner', 'kepala_sekolah', 'admin', 'tu'];
 
 // ---- 1. Tentukan sekolah dari hostname ----
 async function resolveTenant() {
@@ -23,12 +24,7 @@ async function myRoles(tid) {
   return (data ?? []).map((r) => r.role);
 }
 
-// ---- 2. Layout & login ----
-const layout = (t, body) => `
-  <header><strong>${esc(t.nama)}</strong>
-    <nav><a href="/">Beranda</a><a href="/admin">Admin</a><a href="/siswa">Siswa</a></nav></header>
-  <main>${body}</main>`;
-
+// ---- 2. Login ----
 function loginView(t, area) {
   app.innerHTML = layout(t, `
     <h2>Login ${esc(area)}</h2>
@@ -46,7 +42,7 @@ function loginView(t, area) {
   };
 }
 
-const logoutBtn = '<p><button id="lo">Keluar</button></p>';
+const logoutBtn = '<button id="lo" class="sec">Keluar</button>';
 const bindLogout = () => (document.getElementById('lo').onclick = async () => { await sb.auth.signOut(); location.href = '/'; });
 
 // ---- 3. Halaman ----
@@ -63,15 +59,25 @@ async function landing(t) {
 }
 
 async function adminView(t, roles) {
-  const [s, gr] = await Promise.all([
-    sb.from('siswa').select('nis,nama,status').eq('tenant_id', t.id).order('nama').limit(50),
-    sb.from('guru').select('nip,nama,status').eq('tenant_id', t.id).order('nama').limit(50),
-  ]);
-  const rows = (d) => (d ?? []).map((r) => `<tr><td>${esc(r.nis ?? r.nip)}</td><td>${esc(r.nama)}</td><td>${esc(r.status)}</td></tr>`).join('');
-  app.innerHTML = layout(t, `<h2>Dashboard (${esc(roles.join(', '))})</h2>${logoutBtn}
-    <h3>Siswa (${s.data?.length ?? 0})</h3><table>${rows(s.data)}</table>
-    <h3>Guru (${gr.data?.length ?? 0})</h3><table>${rows(gr.data)}</table>`);
+  const sub = location.pathname.split('/')[2] ?? '';
+  app.innerHTML = layout(t, `
+    <h2>Admin <span class="muted">(${esc(roles.join(', '))})</span></h2>
+    <p><a href="/admin">Dashboard</a> · <a href="/admin/siswa">Siswa</a> ${logoutBtn}</p>
+    <div id="page"></div>`);
   bindLogout();
+  const page = document.getElementById('page');
+
+  if (sub === 'siswa') return siswaPage(page, t, roles.some((r) => WRITERS.includes(r)));
+
+  const count = async (table) => {
+    const { count: n } = await sb.from(table).select('id', { count: 'exact', head: true }).eq('tenant_id', t.id);
+    return n ?? 0;
+  };
+  const [s, g, k] = await Promise.all([count('siswa'), count('guru'), count('kelas')]);
+  page.innerHTML = `<div class="cols">
+    <div class="card"><h3>${s}</h3>Siswa</div>
+    <div class="card"><h3>${g}</h3>Guru</div>
+    <div class="card"><h3>${k}</h3>Kelas</div></div>`;
 }
 
 async function siswaView(t) {
@@ -79,7 +85,7 @@ async function siswaView(t) {
     sb.from('nilai').select('jenis,skor,mata_pelajaran(nama)').order('created_at', { ascending: false }).limit(50),
     sb.from('absensi').select('tanggal,status').order('tanggal', { ascending: false }).limit(30),
   ]);
-  app.innerHTML = layout(t, `<h2>Portal Siswa</h2>${logoutBtn}
+  app.innerHTML = layout(t, `<h2>Portal Siswa</h2><p>${logoutBtn}</p>
     <h3>Nilai</h3><table>${(n.data ?? []).map((r) => `<tr><td>${esc(r.mata_pelajaran?.nama)}</td><td>${esc(r.jenis)}</td><td>${esc(r.skor)}</td></tr>`).join('')}</table>
     <h3>Absensi</h3><table>${(a.data ?? []).map((r) => `<tr><td>${esc(r.tanggal)}</td><td>${esc(r.status)}</td></tr>`).join('')}</table>`);
   bindLogout();
@@ -97,6 +103,6 @@ async function siswaView(t) {
   const roles = await myRoles(t.id);
   if (!roles) return loginView(t, area);
   const allowed = area === 'admin' ? roles.some((r) => STAFF.includes(r)) : roles.includes('siswa');
-  if (!allowed) { app.innerHTML = layout(t, `<h2>Akses ditolak</h2>${logoutBtn}`); return bindLogout(); }
+  if (!allowed) { app.innerHTML = layout(t, `<h2>Akses ditolak</h2><p>${logoutBtn}</p>`); return bindLogout(); }
   return area === 'admin' ? adminView(t, roles) : siswaView(t);
 })();
