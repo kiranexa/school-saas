@@ -53,3 +53,19 @@ Alternatif: Claude Code di folder proyek membaca `CLAUDE.md` otomatis.
 ## Log
 - 2026-11-21: skema 001-002, frontend dasar, CRUD siswa, dokumentasi, Playwright (16 tes hijau), push ke GitHub
 - 2026-11-22: migrasi 003-004, halaman admin lengkap, 38 tes hijau di staging, redesain dan mode terang/gelap, dukungan HP untuk dev
+
+## Lingkungan
+- Production: Supabase `rxmofaibjvzdcffbazny`. Staging: (isi ref project staging di sini). Keduanya memakai migrasi 001 sampai 004.
+- Demo online: https://school-saas.vercel.app (Vercel, deploy otomatis dari `main`), terdaftar di `tenant_domains` untuk sekolah `school1`.
+- Dev lokal: `npm run dev` (port 5173, pindah ke 5174 jika terpakai). Tes e2e memakai port 5199. Dari HP: `http://<IP>:PORT/?sekolah=school1`.
+- Perintah database: `npx supabase ...` (bukan instalasi global); tambahkan `--remote` untuk menarget project production.
+
+## Keputusan
+- Hosting: Vercel (wildcard domain didukung). Cloudflare Pages dicoret (tanpa wildcard domain kustom); GitHub Pages tidak cocok.
+- Pembuatan akun siswa/guru dari admin: usulan password sementara yang ditampilkan sekali (belum final; alternatifnya undangan email).
+- `is_primary` di `tenant_domains` belum dibaca kode; pengalihan ke alamat utama belum dibangun.
+
+## Belum dipastikan
+- Demo Vercel: halaman depan tampil, login admin, muat ulang `/admin/siswa` tidak 404, terbuka dari HP.
+- 5 tes `10-tampilan` dan tampilan di browser asli.
+- 2026-11-22: deploy demo ke Vercel, catatan hosting dan lingkungan
