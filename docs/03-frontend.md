@@ -51,4 +51,4 @@ Pembuatan akun dari admin, portal wali, kelola konten landing, rapor/PDF, paging
 1. Cari IP komputer: `ipconfig getifaddr en0` (Mac). Pastikan `npm run dev` berjalan (sudah memakai `--host`).
 2. Buka `http://<IP>:5173/?sekolah=school1` di HP. Slug disimpan di `localStorage['dev-sekolah']`, jadi tautan berikutnya tidak perlu parameter; ganti dengan `?sekolah=slug-lain`.
 3. Fitur ini hanya aktif pada `npm run dev` (`import.meta.env.DEV`), tidak ada di build produksi.
-Port 5174 hanya dipakai tes Playwright, bukan dev server biasa.
+Port 5199 hanya dipakai tes Playwright, bukan dev server biasa.

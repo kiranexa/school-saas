@@ -1,4 +1,4 @@
-export const PORT = 5174;
+export const PORT = 5199;
 export const SLUG_A = 'e2e-a';
 export const SLUG_B = 'e2e-b';
 export const URL_A = `http://${SLUG_A}.localhost:${PORT}`;

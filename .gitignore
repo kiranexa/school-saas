@@ -8,3 +8,5 @@ supabase/.temp
 playwright-report
 test-results
 e2e/.fixtures.json
+
+.DS_Store

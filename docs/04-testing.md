@@ -11,8 +11,8 @@
 ## E2E dengan Playwright
 Tes berjalan di **project Supabase staging**, bukan production.
 - `global-setup` membuat 2 sekolah uji (`e2e-a`, `e2e-b`), 5 user, dan data contoh memakai secret key; `global-teardown` menghapus semuanya.
-- Frontend dijalankan di port 5174 dengan `--mode e2e` (membaca `.env.e2e`).
-- Tes membuka `http://e2e-a.localhost:5174` dan `http://e2e-b.localhost:5174`.
+- Frontend dijalankan di port 5199 dengan `--mode e2e` (membaca `.env.e2e`).
+- Tes membuka `http://e2e-a.localhost:5199` dan `http://e2e-b.localhost:5199`.
 
 ### Data uji sekolah A
 | Data | Keterangan |
