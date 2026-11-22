@@ -12,7 +12,7 @@ SaaS manajemen sekolah multi-tenant. Satu frontend + satu database; tiap sekolah
 ## Stack
 - DB + API + Auth: Supabase (PostgreSQL + RLS). Project ref: `rxmofaibjvzdcffbazny`
 - Frontend: Vite + JavaScript (ES modules). Rencana: React + TypeScript
-- CI/CD: GitHub Actions. Hosting rencana: Cloudflare Pages (wildcard subdomain)
+- CI/CD: GitHub Actions. Hosting: Vercel (wildcard domain)
 
 ## Aturan wajib
 1. Skema berubah HANYA lewat file BARU di `supabase/migrations/` (`YYYYMMDDHHMMSS_nama.sql`). Jangan edit migrasi lama yang sudah dijalankan.

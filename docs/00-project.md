@@ -22,7 +22,7 @@ owner, kepala_sekolah, admin, tu, guru, siswa, wali. Satu user bisa punya bebera
 ## Keputusan
 - Supabase (Postgres + RLS) dipilih agar tidak perlu menulis backend CRUD dan isolasi data dijaga di database.
 - Domain default `school1.<domain-saas>`; domain sekolah sendiri (`*.sch.id`) lewat CNAME. `sch.id` tidak bisa di-wildcard karena didaftarkan per sekolah (PANDI).
-- GitHub Pages tidak dipakai: tidak mendukung wildcard subdomain. Pakai Cloudflare Pages atau Vercel.
+- GitHub Pages tidak dipakai: tidak mendukung wildcard subdomain. Pakai Vercel (wildcard domain didukung); Cloudflare Pages tidak mendukung wildcard domain kustom.
 - Frontend sementara JS polos (prototipe). Pindah ke React + TypeScript saat fitur membesar; skema DB tidak berubah.
 
 ## Catatan hukum

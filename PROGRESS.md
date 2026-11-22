@@ -37,7 +37,7 @@ Fondasi lengkap dan teruji: database multi-tenant dengan RLS, 10 halaman admin, 
 5. [ ] Rapor (rekap nilai per siswa) dan cetak PDF
 6. [ ] Absensi per jam pelajaran (berdasarkan jadwal)
 7. [ ] Filter dropdown kelas untuk guru; paging untuk daftar lebih dari 200 baris
-8. [ ] Deploy Cloudflare Pages + wildcard domain; E2E di GitHub Actions (4 secret staging)
+8. [ ] Deploy ke Vercel + wildcard domain; E2E di GitHub Actions (4 secret staging)
 9. [ ] Migrasi frontend ke React + TypeScript
 
 ## Hutang teknis
