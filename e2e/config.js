@@ -6,7 +6,8 @@ export const URL_B = `http://${SLUG_B}.localhost:${PORT}`;
 export const PASSWORD = 'E2e-Test-Pass-123!';
 
 export const USERS = {
-  adminA: 'e2e-admin-a@example.com',
+  adminA: 'e2e-admin-a@example.com',   // owner sekolah A
+  staffA: 'e2e-staff-a@example.com',   // peran admin (bukan owner) sekolah A
   guruA: 'e2e-guru-a@example.com',
   siswaA: 'e2e-siswa-a@example.com',
   adminB: 'e2e-admin-b@example.com',

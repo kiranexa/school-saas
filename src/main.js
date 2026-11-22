@@ -1,10 +1,9 @@
 import { sb } from './supabase.js';
 import { esc, layout } from './ui.js';
-import { siswaPage } from './pages/siswa.js';
+import { PAGES } from './pages/index.js';
 
 const app = document.getElementById('app');
 const STAFF = ['owner', 'kepala_sekolah', 'admin', 'tu', 'guru'];
-const WRITERS = ['owner', 'kepala_sekolah', 'admin', 'tu'];
 
 // ---- 1. Tentukan sekolah dari hostname ----
 async function resolveTenant() {
@@ -60,14 +59,22 @@ async function landing(t) {
 
 async function adminView(t, roles) {
   const sub = location.pathname.split('/')[2] ?? '';
+  const bisa = Object.entries(PAGES).filter(([, p]) => roles.some((r) => p.who.includes(r)));
+  const nav = [['', 'Dashboard'], ...bisa.map(([k, p]) => [k, p.label])]
+    .map(([k, l]) => `<a href="/admin${k ? `/${k}` : ''}">${esc(l)}</a>`).join(' · ');
+
   app.innerHTML = layout(t, `
     <h2>Admin <span class="muted">(${esc(roles.join(', '))})</span></h2>
-    <p><a href="/admin">Dashboard</a> · <a href="/admin/siswa">Siswa</a> ${logoutBtn}</p>
+    <p>${nav} ${logoutBtn}</p>
     <div id="page"></div>`);
   bindLogout();
   const page = document.getElementById('page');
 
-  if (sub === 'siswa') return siswaPage(page, t, roles.some((r) => WRITERS.includes(r)));
+  const def = PAGES[sub];
+  if (def) {
+    if (!bisa.some(([k]) => k === sub)) { page.innerHTML = '<p>Anda tidak punya akses ke halaman ini.</p>'; return; }
+    return def.render(page, t, { roles, canWrite: roles.some((r) => def.write.includes(r)) });
+  }
 
   const count = async (table) => {
     const { count: n } = await sb.from(table).select('id', { count: 'exact', head: true }).eq('tenant_id', t.id);
@@ -81,13 +88,15 @@ async function adminView(t, roles) {
 }
 
 async function siswaView(t) {
-  const [n, a] = await Promise.all([
+  const [n, a, tg] = await Promise.all([
     sb.from('nilai').select('jenis,skor,mata_pelajaran(nama)').order('created_at', { ascending: false }).limit(50),
     sb.from('absensi').select('tanggal,status').order('tanggal', { ascending: false }).limit(30),
+    sb.from('tagihan').select('jenis,periode,jumlah,status').order('jatuh_tempo', { ascending: false }).limit(30),
   ]);
   app.innerHTML = layout(t, `<h2>Portal Siswa</h2><p>${logoutBtn}</p>
     <h3>Nilai</h3><table>${(n.data ?? []).map((r) => `<tr><td>${esc(r.mata_pelajaran?.nama)}</td><td>${esc(r.jenis)}</td><td>${esc(r.skor)}</td></tr>`).join('')}</table>
-    <h3>Absensi</h3><table>${(a.data ?? []).map((r) => `<tr><td>${esc(r.tanggal)}</td><td>${esc(r.status)}</td></tr>`).join('')}</table>`);
+    <h3>Absensi</h3><table>${(a.data ?? []).map((r) => `<tr><td>${esc(r.tanggal)}</td><td>${esc(r.status)}</td></tr>`).join('')}</table>
+    <h3>Tagihan</h3><table>${(tg.data ?? []).map((r) => `<tr><td>${esc(r.jenis)}</td><td>${esc(r.periode)}</td><td>${esc(r.jumlah)}</td><td>${esc(r.status)}</td></tr>`).join('')}</table>`);
   bindLogout();
 }
 
