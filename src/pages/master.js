@@ -7,6 +7,25 @@ const STATUS = opt(['aktif', 'nonaktif', 'lulus', 'pindah', 'cuti']);
 const HARI = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'].map((l, i) => ({ value: String(i + 1), label: l }));
 const jam = (s) => (s ?? '').slice(0, 5);
 
+export const siswaPage = (el, t, w) => crudPage(el, t, w, {
+  title: 'Data Siswa', singular: 'siswa', table: 'siswa', order: 'nama', search: ['nama', 'nis'],
+  defaults: { status: 'aktif' },
+  dupMessage: 'NIS sudah dipakai siswa lain.',
+  deleteWarn: () => 'Absensi, nilai, dan tagihan siswa ini ikut terhapus. Lebih aman: ubah status menjadi nonaktif.',
+  columns: [
+    { label: 'NIS', get: (r) => r.nis }, { label: 'Nama', get: (r) => r.nama }, { label: 'JK', get: (r) => r.jk },
+    { label: 'Wali', get: (r) => r.nama_wali }, { label: 'Status', get: (r) => r.status, pill: true },
+  ],
+  fields: [
+    { name: 'nama', label: 'Nama', required: true }, { name: 'nis', label: 'NIS' }, { name: 'nisn', label: 'NISN' },
+    { name: 'jk', label: 'Jenis kelamin', type: 'select', options: JK },
+    { name: 'tgl_lahir', label: 'Tanggal lahir', type: 'date' }, { name: 'telepon', label: 'Telepon' },
+    { name: 'alamat', label: 'Alamat' }, { name: 'nama_wali', label: 'Nama wali' },
+    { name: 'telepon_wali', label: 'Telepon wali' },
+    { name: 'status', label: 'Status', type: 'select', options: STATUS },
+  ],
+});
+
 export const guruPage = (el, t, w) => crudPage(el, t, w, {
   title: 'Data Guru', singular: 'guru', table: 'guru', order: 'nama', search: ['nama', 'nip'],
   defaults: { status: 'aktif' },
@@ -14,7 +33,7 @@ export const guruPage = (el, t, w) => crudPage(el, t, w, {
   deleteWarn: () => 'Guru yang masih menjadi wali kelas atau punya jadwal tidak bisa dihapus. Ubah status menjadi nonaktif.',
   columns: [
     { label: 'NIP', get: (r) => r.nip }, { label: 'Nama', get: (r) => r.nama },
-    { label: 'Telepon', get: (r) => r.telepon }, { label: 'Status', get: (r) => r.status },
+    { label: 'Telepon', get: (r) => r.telepon }, { label: 'Status', get: (r) => r.status, pill: true },
   ],
   fields: [
     { name: 'nama', label: 'Nama', required: true }, { name: 'nip', label: 'NIP' },
@@ -44,7 +63,7 @@ export const tahunPage = (el, t, w) => crudPage(el, t, w, {
   columns: [
     { label: 'Tahun ajaran', get: (r) => r.nama }, { label: 'Semester', get: (r) => r.semester },
     { label: 'Mulai', get: (r) => r.mulai }, { label: 'Selesai', get: (r) => r.selesai },
-    { label: 'Aktif', get: (r) => (r.aktif ? 'ya' : '') },
+    { label: 'Aktif', get: (r) => (r.aktif ? 'ya' : ''), pill: true },
   ],
   fields: [
     { name: 'nama', label: 'Nama (mis. 2026/2027)', required: true },
@@ -100,7 +119,7 @@ export const tagihanPage = (el, t, w) => crudPage(el, t, w, {
   columns: [
     { label: 'Siswa', get: (r) => r.siswa?.nama }, { label: 'Jenis', get: (r) => r.jenis },
     { label: 'Periode', get: (r) => r.periode }, { label: 'Jumlah', get: (r) => r.jumlah },
-    { label: 'Jatuh tempo', get: (r) => r.jatuh_tempo }, { label: 'Status', get: (r) => r.status },
+    { label: 'Jatuh tempo', get: (r) => r.jatuh_tempo }, { label: 'Status', get: (r) => r.status, pill: true },
   ],
   fields: [
     { name: 'siswa_id', label: 'Siswa', required: true,

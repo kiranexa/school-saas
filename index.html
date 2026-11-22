@@ -3,28 +3,19 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#F3F6FB" />
   <title>Sekolah</title>
-  <style>
-    :root { --bg:#fff; --fg:#1a1a1a; --muted:#666; --brand:#1d4ed8; --card:#f5f6f8; }
-    @media (prefers-color-scheme: dark) { :root { --bg:#14161a; --fg:#eee; --muted:#9aa; --card:#1f2229; } }
-    body { margin:0; font:16px system-ui,sans-serif; background:var(--bg); color:var(--fg); }
-    header,main { max-width:960px; margin:0 auto; padding:16px; }
-    header { display:flex; justify-content:space-between; align-items:center; }
-    nav a { margin-left:12px; color:var(--brand); text-decoration:none; }
-    .card { background:var(--card); padding:12px 16px; border-radius:8px; margin:8px 0; }
-    .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:8px; }
-    .grid img { width:100%; border-radius:8px; }
-    input,button { padding:8px 12px; margin:4px 0; font:inherit; }
-    button { background:var(--brand); color:#fff; border:0; border-radius:6px; cursor:pointer; }
-    table { width:100%; border-collapse:collapse; }
-    td,th { text-align:left; padding:6px; border-bottom:1px solid var(--card); }
-    .muted { color:var(--muted); }
-    label { display:block; font-size:14px; }
-    label input,label select { display:block; width:100%; box-sizing:border-box; }
-    .cols { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:8px; }
-    button.sec { background:var(--card); color:var(--fg); border:1px solid var(--muted); }
-    button.danger { background:#b91c1c; }
-  </style>
+  <script>
+    // Terapkan tema sebelum halaman digambar (mencegah kedipan): pilihan tersimpan, jika tidak ada ikuti perangkat.
+    try {
+      var t = localStorage.getItem('tema');
+      if (t !== 'light' && t !== 'dark') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.dataset.tema = t;
+    } catch (e) { document.documentElement.dataset.tema = 'light'; }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap" />
 </head>
-<body><div id="app">Memuat…</div><script type="module" src="/src/main.js"></script></body>
+<body><div id="app"></div><script type="module" src="/src/main.js"></script></body>
 </html>

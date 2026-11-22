@@ -2,31 +2,54 @@
 
 Terakhir diperbarui: 2026-11-22
 
-## Selesai
-- [x] Skema multi-tenant + RLS per peran (001), wali + audit log + `create_school()` (002)
-- [x] Pengamanan dan fitur operasional (003): admin tidak bisa memberi peran owner, guru hanya menulis nilai/absensi kelas yang diajar, satu tahun ajaran aktif, penempatan siswa unik per tahun ajaran dan tidak lintas sekolah, status tagihan otomatis, simpan massal absensi dan nilai
-- [x] Migrasi 004: perbaikan akses anon pada `guru_boleh_siswa` (anon membaca nilai/absensi sebelumnya error, bukan kosong)
-- [x] Database online, sekolah pertama, repo GitHub, dokumentasi, skill proyek
-- [x] Frontend: landing, login, portal siswa (nilai, absensi, tagihan)
-- [x] Halaman admin: Siswa, Guru, Kelas (+ penempatan siswa), Mapel, Jadwal, Tahun ajaran, Absensi harian, Input nilai, Tagihan, Pembayaran
-- [x] Tes Playwright (E2E + isolasi RLS + keamanan peran): 38 tes di 9 file `e2e/specs/` (semua hijau di staging setelah 003 dan 004)
+## Status singkat
+Fondasi lengkap dan teruji: database multi-tenant dengan RLS, 10 halaman admin, portal siswa, tema terang/gelap, dan tes otomatis. Berikutnya: pembuatan akun dari admin dan portal wali.
+
+## Selesai (21-22 November 2026)
+**Database (Supabase, migrasi 001 sampai 004)**
+- [x] 001: 17 tabel multi-tenant + RLS per peran
+- [x] 002: wali, audit log, `create_school()`
+- [x] 003: admin tidak bisa memberi/mengubah peran owner; guru hanya menulis nilai/absensi kelas yang diajar atau diwalikan; satu tahun ajaran aktif; penempatan siswa unik per tahun ajaran dan tidak lintas sekolah; status tagihan otomatis; simpan massal absensi dan nilai (RPC)
+- [x] 004: perbaikan akses anon pada `guru_boleh_siswa` (ditemukan oleh tes)
+- [x] Staging: 001 sampai 004 terpasang, 38 tes hijau
+
+**Aplikasi**
+- [x] Landing, login, portal siswa (nilai, absensi, tagihan)
+- [x] Admin: Siswa, Guru, Kelas (+ penempatan siswa), Mapel, Jadwal, Tahun ajaran, Absensi harian, Input nilai, Tagihan, Pembayaran
+- [x] Desain "buku induk", mode terang/gelap (tersimpan, mengikuti perangkat), warna sekolah via `tenants.tema.accent`, menu geser di layar kecil (`docs/06-design.md`)
+- [x] Mode pengembangan dari HP lewat `?sekolah=slug` (hanya `npm run dev`)
+
+**Otomasi dan repo**
+- [x] Playwright: 43 tes di 10 file (E2E, isolasi RLS, keamanan peran, tampilan), data uji dibuat dan dihapus otomatis di project staging
+- [x] GitHub Actions: `ci.yml` (build), `deploy-db.yml` (migrasi), `e2e.yml` (manual)
+- [x] Dokumentasi: `CLAUDE.md`, `docs/00` sampai `docs/06`, skill proyek di `.claude/skills/`
+
+## Belum terverifikasi
+- [ ] 5 tes tampilan baru (`10-tampilan`) dan tampilan di browser asli: belum dijalankan setelah redesain
+- [ ] Production: pastikan 003 dan 004 sudah terpasang (`npx supabase migration list --remote` harus menampilkan empat versi)
+- [ ] Workflow `deploy-db.yml` butuh 3 secret GitHub; belum dipastikan terisi
 
 ## Berikutnya (urut)
-- [ ] Pembuatan akun siswa/guru dari `/admin` (Edge Function memakai secret key di server)
-- [ ] Portal wali (`/wali`): data anak, absensi, nilai, tagihan
-- [ ] Konten landing: kelola pengumuman, galeri, halaman dari `/admin`
-- [ ] Rapor (rekap nilai per siswa) dan cetak PDF
-- [ ] Absensi per jam pelajaran (berdasarkan jadwal)
-- [ ] Filter dropdown kelas untuk guru (hanya kelas yang diajar)
-- [ ] Paging untuk daftar > 200 baris
-- [ ] Deploy Cloudflare Pages + wildcard domain
-- [ ] E2E di GitHub Actions (isi 4 secret staging, aktifkan pemicu push)
-- [ ] Migrasi frontend ke React + TypeScript
+1. [ ] Tinjau tampilan di browser dan HP, sesuaikan (warna, huruf, jarak); pastikan 43 tes hijau
+2. [ ] Pembuatan akun siswa/guru dari `/admin` (Edge Function dengan secret key di server; usulan: password sementara yang ditampilkan sekali; keputusan belum final)
+3. [ ] Portal wali (`/wali`): data anak, absensi, nilai, tagihan
+4. [ ] Kelola konten landing (pengumuman, galeri, halaman) dan warna sekolah dari `/admin`
+5. [ ] Rapor (rekap nilai per siswa) dan cetak PDF
+6. [ ] Absensi per jam pelajaran (berdasarkan jadwal)
+7. [ ] Filter dropdown kelas untuk guru; paging untuk daftar lebih dari 200 baris
+8. [ ] Deploy Cloudflare Pages + wildcard domain; E2E di GitHub Actions (4 secret staging)
+9. [ ] Migrasi frontend ke React + TypeScript
 
 ## Hutang teknis
-Lihat bagian terakhir `docs/01-database.md`.
+Lihat bagian terakhir `docs/01-database.md`. Yang terpenting: guru bisa membaca data semua siswa dan guru di sekolahnya; backup di luar Supabase belum ada.
+
+## Melanjutkan di chat baru
+Chat baru tidak mengingat percakapan ini. Tempel atau unggah: `CLAUDE.md`, `PROGRESS.md`, dan `docs/01-database.md` (tambah file spesifik yang akan diubah). Contoh pembuka:
+
+> Saya melanjutkan proyek School SaaS (Supabase + Vite, multi-tenant). Konteksnya ada di CLAUDE.md dan PROGRESS.md terlampir. Tugas hari ini: [isi, mis. "buat pembuatan akun siswa dari /admin"]. Ikuti aturan di CLAUDE.md, tulis migrasi baru jika skema berubah, dan sertakan tes Playwright.
+
+Alternatif: Claude Code di folder proyek membaca `CLAUDE.md` otomatis.
 
 ## Log
-- 2026-11-21: skema 001-002, frontend dasar, CRUD siswa, dokumentasi, Playwright (16 tes hijau)
-- 2026-11-22: migrasi 003, halaman admin lengkap, tes tambahan
-- 2026-11-22: tes menemukan cacat di 003 (anon error saat baca nilai/absensi); diperbaiki di migrasi 004
+- 2026-11-21: skema 001-002, frontend dasar, CRUD siswa, dokumentasi, Playwright (16 tes hijau), push ke GitHub
+- 2026-11-22: migrasi 003-004, halaman admin lengkap, 38 tes hijau di staging, redesain dan mode terang/gelap, dukungan HP untuk dev

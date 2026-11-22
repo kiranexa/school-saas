@@ -1,5 +1,5 @@
 import { sb } from './supabase.js';
-import { esc } from './ui.js';
+import { esc, pill, pesan } from './ui.js';
 
 const friendly = (error, aksi, cfg) => {
   if (error.code === '23505') return cfg.dupMessage ?? 'Data duplikat.';
@@ -11,7 +11,7 @@ const friendly = (error, aksi, cfg) => {
 
 /**
  * Halaman CRUD generik berbasis konfigurasi.
- * cfg: { title, singular, table, select, order, search[], columns[{label,get}], fields[], defaults,
+ * cfg: { title, singular, table, select, order, search[], columns[{label,get,pill}], fields[], defaults,
  *        dupMessage, actions[{label,href}], deleteWarn(r), extra() }
  * field: { name, label, type, required, options | lookup{table,select,label,filter}, step, createOnly }
  */
@@ -35,7 +35,7 @@ export async function crudPage(el, t, canWrite, cfg) {
     const val = v[f.name];
     const lab = esc(f.label) + (f.required ? ' *' : '');
     if (f.type === 'checkbox') {
-      return `<label><input type="checkbox" name="${f.name}" style="display:inline;width:auto" ${val ? 'checked' : ''}> ${esc(f.label)}</label>`;
+      return `<label><input type="checkbox" name="${f.name}" ${val ? 'checked' : ''}>${esc(f.label)}</label>`;
     }
     if (f.lookup || f.type === 'select') {
       const opts = f.lookup ? [{ value: '', label: '—' }, ...(lookups[f.name] ?? [])] : f.options;
@@ -45,22 +45,28 @@ export async function crudPage(el, t, canWrite, cfg) {
     return `<label>${lab}<input name="${f.name}" type="${f.type ?? 'text'}" ${f.step ? `step="${f.step}"` : ''} value="${esc(val)}"></label>`;
   };
 
+  const sel = (c, r) => (c.pill ? pill(c.get(r)) : esc(c.get(r)));
+
   function draw() {
     const isNew = !form?.id;
     el.innerHTML = `
-      <h3>${esc(cfg.title)} (${rows.length})</h3>
-      ${msg ? `<p class="muted">${esc(msg)}</p>` : ''}
-      <p>${cfg.search ? `<input id="q" placeholder="Cari ${esc(cfg.search.join(' / '))}" value="${esc(q)}"> <button id="go" class="sec">Cari</button> ` : ''}${canWrite ? '<button id="new">+ Tambah</button>' : ''}</p>
-      ${form ? `<form id="sf" class="card"><h3>${isNew ? 'Tambah' : 'Ubah'} ${esc(cfg.singular ?? cfg.title)}</h3>
+      <h1 class="judul">${esc(cfg.title)}</h1>
+      ${pesan(msg)}
+      <div class="toolbar">
+        ${cfg.search ? `<input id="q" type="search" aria-label="Cari" placeholder="Cari ${esc(cfg.search.join(' atau '))}" value="${esc(q)}">
+          <button id="go" class="sec">Cari</button>` : ''}
+        ${canWrite ? '<button id="new">+ Tambah</button>' : ''}
+        <span class="muted">${rows.length} data</span>
+      </div>
+      ${form ? `<form id="sf" class="panel"><h3>${isNew ? 'Tambah' : 'Ubah'} ${esc(cfg.singular ?? cfg.title)}</h3>
         <div class="cols">${cfg.fields.map((f) => fieldHtml(f, form.v, isNew)).join('')}</div>
-        <button>Simpan</button> <button type="button" class="sec" id="cancel">Batal</button></form>` : ''}
-      <div style="overflow-x:auto"><table>
-        <tr>${cfg.columns.map((c) => `<th>${esc(c.label)}</th>`).join('')}<th></th></tr>
-        ${rows.map((r) => `<tr>${cfg.columns.map((c) => `<td>${esc(c.get(r))}</td>`).join('')}<td>
-          ${(cfg.actions ?? []).map((a) => `<a href="${esc(a.href(r))}">${esc(a.label)}</a> `).join('')}
-          ${canWrite ? `<button class="sec" data-edit="${esc(r.id)}">Ubah</button> <button class="danger" data-del="${esc(r.id)}">Hapus</button>` : ''}</td></tr>`).join('')}
-      </table></div>
-      ${rows.length === 0 ? '<p class="muted">Belum ada data.</p>' : ''}`;
+        <div class="baris"><button>Simpan</button><button type="button" class="sec" id="cancel">Batal</button></div></form>` : ''}
+      <div class="tabel"><table>
+        <thead><tr>${cfg.columns.map((c) => `<th>${esc(c.label)}</th>`).join('')}<th></th></tr></thead>
+        <tbody>${rows.map((r) => `<tr>${cfg.columns.map((c) => `<td>${sel(c, r)}</td>`).join('')}
+          <td class="aksi">${(cfg.actions ?? []).map((a) => `<a class="btn sec kecil" href="${esc(a.href(r))}">${esc(a.label)}</a>`).join('')}
+          ${canWrite ? `<button class="sec kecil" data-edit="${esc(r.id)}">Ubah</button><button class="danger kecil" data-del="${esc(r.id)}">Hapus</button>` : ''}</td></tr>`).join('')}</tbody>
+      </table>${rows.length === 0 ? `<p class="kosong">Belum ada data.${canWrite ? ' Tambahkan dengan tombol di atas.' : ''}</p>` : ''}</div>`;
     bind();
   }
 

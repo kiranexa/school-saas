@@ -1,5 +1,5 @@
 import { sb } from '../supabase.js';
-import { esc } from '../ui.js';
+import { esc, pesan } from '../ui.js';
 
 const STATUS = ['hadir', 'izin', 'sakit', 'alpa'];
 const lokal = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
@@ -25,19 +25,21 @@ export async function absensiPage(el, t, canWrite) {
 
   function draw() {
     el.innerHTML = `
-      <h3>Absensi Harian</h3>
-      <p><label style="display:inline">Kelas <select id="kelas" style="display:inline;width:auto">
-        <option value="">— pilih —</option>
-        ${kelas.map((k) => `<option value="${esc(k.id)}" ${k.id === kelasId ? 'selected' : ''}>${esc(k.nama)}</option>`).join('')}</select></label>
-        <label style="display:inline">Tanggal <input id="tgl" type="date" value="${esc(tanggal)}" style="display:inline;width:auto"></label>
-        <button id="muat" class="sec">Muat</button></p>
-      ${msg ? `<p class="muted">${esc(msg)}</p>` : ''}
-      ${kelasId ? `<table><tr><th>NIS</th><th>Nama</th><th>Status</th><th>Catatan</th></tr>
+      <h1 class="judul">Absensi harian</h1>
+      <div class="toolbar">
+        <label>Kelas <select id="kelas"><option value="">— pilih —</option>
+          ${kelas.map((k) => `<option value="${esc(k.id)}" ${k.id === kelasId ? 'selected' : ''}>${esc(k.nama)}</option>`).join('')}</select></label>
+        <label>Tanggal <input id="tgl" type="date" value="${esc(tanggal)}"></label>
+        <button id="muat" class="sec">Muat</button>
+      </div>
+      ${pesan(msg)}
+      ${kelasId ? `<div class="tabel"><table><thead><tr><th>NIS</th><th>Nama</th><th>Kehadiran</th><th>Catatan</th></tr></thead><tbody>
         ${murid.map((m) => { const cur = rec[m.id]?.status ?? 'hadir'; return `<tr><td>${esc(m.nis)}</td><td>${esc(m.nama)}</td>
-          <td>${STATUS.map((s) => `<label style="display:inline;margin-right:8px"><input type="radio" style="display:inline;width:auto" name="st-${esc(m.id)}" value="${s}" ${cur === s ? 'checked' : ''} ${canWrite ? '' : 'disabled'}> ${s}</label>`).join('')}</td>
-          <td><input data-cat="${esc(m.id)}" value="${esc(rec[m.id]?.catatan)}" ${canWrite ? '' : 'disabled'}></td></tr>`; }).join('')}
-        </table>${murid.length === 0 ? '<p class="muted">Belum ada siswa di kelas ini.</p>' : ''}
-        ${canWrite && murid.length ? '<p><button id="simpan">Simpan absensi</button></p>' : ''}` : '<p class="muted">Pilih kelas.</p>'}`;
+          <td>${STATUS.map((s) => `<label class="opsi"><input type="radio" name="st-${esc(m.id)}" value="${s}" ${cur === s ? 'checked' : ''} ${canWrite ? '' : 'disabled'}>${s}</label>`).join('')}</td>
+          <td><input data-cat="${esc(m.id)}" aria-label="Catatan ${esc(m.nama)}" value="${esc(rec[m.id]?.catatan)}" ${canWrite ? '' : 'disabled'}></td></tr>`; }).join('')}
+        </tbody></table>${murid.length === 0 ? '<p class="kosong">Belum ada siswa di kelas ini.</p>' : ''}</div>
+        ${canWrite && murid.length ? '<div class="baris"><button id="simpan">Simpan absensi</button></div>' : ''}`
+        : '<p class="kosong">Pilih kelas dan tanggal untuk mengisi absensi.</p>'}`;
     bind();
     el.dataset.state = 'ready';
   }

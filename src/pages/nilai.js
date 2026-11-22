@@ -1,5 +1,5 @@
 import { sb } from '../supabase.js';
-import { esc } from '../ui.js';
+import { esc, pesan } from '../ui.js';
 
 const JENIS = ['tugas', 'uh', 'uts', 'uas', 'praktik'];
 
@@ -30,21 +30,23 @@ export async function nilaiPage(el, t, canWrite) {
 
   function draw() {
     el.innerHTML = `
-      <h3>Input Nilai</h3>
-      <p><label style="display:inline">Kelas <select id="kelas" style="display:inline;width:auto"><option value="">— pilih —</option>
-        ${kelas.map((x) => `<option value="${esc(x.id)}" ${x.id === kelasId ? 'selected' : ''}>${esc(x.nama)}</option>`).join('')}</select></label>
-        <label style="display:inline">Mapel <select id="mapel" style="display:inline;width:auto"><option value="">— pilih —</option>
-        ${mapel.map((x) => `<option value="${esc(x.id)}" ${x.id === mapelId ? 'selected' : ''}>${esc(x.nama)}</option>`).join('')}</select></label>
-        <label style="display:inline">Jenis <input id="jenis" list="jenis-list" value="${esc(jenis)}" style="display:inline;width:140px"></label>
+      <h1 class="judul">Input nilai</h1>
+      <div class="toolbar">
+        <label>Kelas <select id="kelas"><option value="">— pilih —</option>
+          ${kelas.map((x) => `<option value="${esc(x.id)}" ${x.id === kelasId ? 'selected' : ''}>${esc(x.nama)}</option>`).join('')}</select></label>
+        <label>Mapel <select id="mapel"><option value="">— pilih —</option>
+          ${mapel.map((x) => `<option value="${esc(x.id)}" ${x.id === mapelId ? 'selected' : ''}>${esc(x.nama)}</option>`).join('')}</select></label>
+        <label>Jenis <input id="jenis" list="jenis-list" placeholder="mis. tugas 1, uh" value="${esc(jenis)}"></label>
         <datalist id="jenis-list">${JENIS.map((j) => `<option value="${j}">`).join('')}</datalist>
-        <button id="muat" class="sec">Muat</button></p>
-      ${msg ? `<p class="muted">${esc(msg)}</p>` : ''}
-      ${siap() ? `<table><tr><th>NIS</th><th>Nama</th><th>Skor (0-100)</th></tr>
+        <button id="muat" class="sec">Muat</button>
+      </div>
+      ${pesan(msg)}
+      ${siap() ? `<div class="tabel"><table><thead><tr><th>NIS</th><th>Nama</th><th>Skor (0-100)</th></tr></thead><tbody>
         ${murid.map((s) => `<tr><td>${esc(s.nis)}</td><td>${esc(s.nama)}</td>
-          <td><input type="number" min="0" max="100" step="0.01" data-skor="${esc(s.id)}" value="${esc(skor[s.id])}" style="width:100px" ${canWrite ? '' : 'disabled'}></td></tr>`).join('')}
-        </table>${murid.length === 0 ? '<p class="muted">Belum ada siswa di kelas ini.</p>' : ''}
-        ${canWrite && murid.length ? '<p><button id="simpan">Simpan nilai</button></p>' : ''}`
-        : '<p class="muted">Pilih kelas, mata pelajaran, dan isi jenis nilai (mis. tugas 1, uh, uts), lalu klik Muat.</p>'}`;
+          <td><input type="number" min="0" max="100" step="0.01" data-skor="${esc(s.id)}" aria-label="Skor ${esc(s.nama)}" value="${esc(skor[s.id])}" style="width:7rem" ${canWrite ? '' : 'disabled'}></td></tr>`).join('')}
+        </tbody></table>${murid.length === 0 ? '<p class="kosong">Belum ada siswa di kelas ini.</p>' : ''}</div>
+        ${canWrite && murid.length ? '<div class="baris"><button id="simpan">Simpan nilai</button></div>' : ''}`
+        : '<p class="kosong">Pilih kelas, mata pelajaran, dan isi jenis nilai (mis. tugas 1, uh, uts), lalu klik Muat.</p>'}`;
     bind();
     el.dataset.state = 'ready';
   }
