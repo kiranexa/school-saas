@@ -46,3 +46,9 @@ Jangan `npm i -g supabase` (gagal); selalu pakai `npx supabase`.
 
 ## Testing
 `npm run test:e2e` (Playwright; butuh `.env.e2e` dan project staging). Fitur baru wajib punya tes di `e2e/specs/`. Lihat `docs/04-testing.md`.
+
+## Cabang dan rilis
+- Satu fitur satu cabang (`feat/nama`); `main` hanya berisi versi yang `npm run test:e2e`-nya hijau. Push ke `main` langsung men-deploy produksi di Vercel.
+- Urutan migrasi: terapkan ke staging, jalankan tes, baru production (`npx supabase db push --remote`).
+- Buat migrasi yang tidak merusak kode lama (tambah kolom, jangan hapus atau ganti nama).
+- Preview Vercel (alamat cabang) belum dikenali `tenant_domains`; uji fitur lewat `npm run dev`.
