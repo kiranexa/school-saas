@@ -27,6 +27,22 @@ Sumber kebenaran: `supabase/migrations/`. Dokumen ini ringkasan; jika berbeda, m
 
 Semua tabel selain `tenants` punya `tenant_id` (FK ke `tenants`, `on delete cascade`).
 
+## Master pendaftaran (migrasi 20261124100000)
+| Tabel | Keterangan |
+|---|---|
+| `jurusan` | per tenant; `unique(tenant_id, nama)`; staf (owner, kepala_sekolah, admin, tu) CRUD langsung; anon baca yang `aktif` |
+| `komponen_biaya` | nama, nominal, wajib, aktif, urutan. TIDAK ada izin tulis untuk klien; anon baca yang `aktif` |
+| `metode_pembayaran` | jenis (transfer, virtual_account, ewallet, tunai), penyedia, nomor, atas_nama, instruksi, aktif. Sama: tulis hanya lewat persetujuan |
+| `pengajuan_perubahan` | entitas, aksi (buat/ubah), `data` baru, `data_lama`, status (menunggu/disetujui/ditolak/dibatalkan), pengaju dan pemutus (id + email), catatan. Hanya staf sekolahnya yang bisa baca; tulis hanya lewat fungsi |
+
+Aturan persetujuan (dijaga di database):
+- `ajukan_perubahan(tenant, entitas, entitas_id, data, catatan)`: hanya admin/tu. `entitas_id` null = data baru. Data divalidasi dan dibakukan oleh `pj_normalisasi`. Menonaktifkan = mengubah `aktif`; tidak ada hapus.
+- `setujui_pengajuan(id)` / `tolak_pengajuan(id, catatan)`: hanya kepala_sekolah atau owner (cadangan). Penyetuju tidak boleh pengaju (walau satu orang memegang dua peran). Persetujuan menolak jika data berlaku sudah berubah sejak diajukan.
+- `batalkan_pengajuan(id)`: hanya pengaju, selama menunggu.
+- Unique parsial `pengajuan_menunggu_uq`: satu pengajuan menunggu per data.
+- Tabel live dicabut izin insert/update/delete untuk `anon` dan `authenticated`; fungsi berjalan `security definer` dengan pemeriksaan tenant dan peran sendiri.
+- Saat pendaftaran (fitur B), rincian biaya HARUS disalin ke data pendaftar agar perubahan nominal berikutnya tidak mengubah tagihan lama.
+
 ## Fungsi dan trigger
 | Nama | Fungsi |
 |---|---|
@@ -36,7 +52,7 @@ Semua tabel selain `tenants` punya `tenant_id` (FK ke `tenants`, `on delete casc
 | `create_school(...)` | onboarding sekolah; hanya `service_role`/SQL Editor |
 | `simpan_absensi_harian(kelas, tanggal, data)` | RPC atomik: ganti absensi harian satu kelas. Berjalan sebagai pemanggil (RLS berlaku). Tidak untuk anon |
 | `simpan_nilai_kelas(kelas, mapel, jenis, data)` | RPC atomik: ganti nilai satu kelas untuk satu mapel dan jenis. Skor kosong = dihapus |
-| trigger `log_audit` | siswa, guru, nilai, absensi, tagihan, pembayaran, tenant_members |
+| trigger `log_audit` | siswa, guru, nilai, absensi, tagihan, pembayaran, tenant_members, jurusan, komponen_biaya, metode_pembayaran, pengajuan_perubahan |
 | trigger `cek_kelas_siswa` | penempatan harus sekolah yang sama dan unik per tahun ajaran |
 | trigger `refresh_tagihan_status` | belum / sebagian / lunas dari total pembayaran |
 
@@ -48,6 +64,8 @@ Semua tabel selain `tenants` punya `tenant_id` (FK ke `tenants`, `on delete casc
 | admin | CRUD data akademik, wali, konten, keuangan; kelola `tenant_members` kecuali peran owner |
 | kepala_sekolah, tu | CRUD data akademik, wali, konten, keuangan |
 | owner, kepala_sekolah, admin | baca `audit_log` |
+| admin, tu | ajukan perubahan biaya dan rekening (tidak bisa menulis langsung) |
+| kepala_sekolah (owner cadangan) | setujui/tolak pengajuan |
 | guru | baca siswa, kelas, kelas_siswa, jadwal, mapel, guru, tahun_ajaran; tulis absensi dan nilai hanya untuk siswa di kelas yang diajar/diwalikan |
 | siswa | baca data dirinya: profil, absensi, nilai, tagihan; baca jadwal, mapel, pengumuman |
 | wali | baca data anaknya: profil, absensi, nilai, tagihan |

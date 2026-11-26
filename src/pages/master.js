@@ -151,3 +151,18 @@ export const pembayaranPage = (el, t, w) => crudPage(el, t, w, {
   ],
   defaults: { metode: 'tunai' },
 });
+
+export const jurusanPage = (el, t, w) => crudPage(el, t, w, {
+  title: 'Jurusan', singular: 'jurusan', table: 'jurusan', order: 'nama', search: ['nama', 'kode'],
+  defaults: { aktif: true },
+  dupMessage: 'Nama jurusan sudah ada.',
+  deleteWarn: () => 'Hanya jurusan yang belum dipakai pendaftar yang bisa dihapus. Untuk menyembunyikan dari form, nonaktifkan saja.',
+  columns: [
+    { label: 'Kode', get: (r) => r.kode }, { label: 'Nama', get: (r) => r.nama },
+    { label: 'Status', get: (r) => (r.aktif ? 'aktif' : 'nonaktif'), pill: true },
+  ],
+  fields: [
+    { name: 'kode', label: 'Kode (mis. IPA)' }, { name: 'nama', label: 'Nama jurusan', required: true },
+    { name: 'aktif', label: 'Aktif (tampil di form pendaftaran)', type: 'checkbox' },
+  ],
+});

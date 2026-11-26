@@ -17,6 +17,10 @@ const SVG = {
   chart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
   receipt: '<path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M9 8h6M9 12h6"/>',
   card: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',
+  tag: '<path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z"/><circle cx="8" cy="8" r="1.5"/>',
+  bank: '<path d="M3 10 12 4l9 6M5 10v8M9 10v8M15 10v8M19 10v8M3 21h18"/>',
+  shield: '<path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/>',
+  school: '<path d="M2 9 12 4l10 5-10 5z"/><path d="M6 11.5V16c0 1.5 3 3 6 3s6-1.5 6-3v-4.5"/>',
   logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>',
 };
 export const ikon = (n) => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${SVG[n] ?? ''}</svg>`;
@@ -27,12 +31,13 @@ const NADA = {
   nonaktif: 'mute', lulus: 'info', izin: 'info',
   pindah: 'warn', cuti: 'warn', sakit: 'warn', sebagian: 'warn',
   alpa: 'bad', belum: 'bad',
+  menunggu: 'warn', disetujui: 'ok', ditolak: 'bad', dibatalkan: 'mute',
 };
 export const pill = (v) => (v == null || v === '' ? ''
   : `<span class="pill ${NADA[String(v).toLowerCase()] ?? 'mute'}">${esc(v)}</span>`);
 
 // ---------- Pesan hasil aksi ----------
-const SUKSES = /^(Tersimpan|Terhapus|Siswa ditambahkan|Siswa dikeluarkan)/;
+const SUKSES = /^(Tersimpan|Terhapus|Siswa ditambahkan|Siswa dikeluarkan|Pengajuan (terkirim|disetujui|ditolak|dibatalkan))/;
 export const pesan = (m) => (m
   ? `<p class="msg ${SUKSES.test(m) ? 'ok' : 'err'}" role="${SUKSES.test(m) ? 'status' : 'alert'}">${esc(m)}</p>` : '');
 

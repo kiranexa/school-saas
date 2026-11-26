@@ -30,6 +30,19 @@ export async function cleanup(sb) {
   }
 }
 
+// Pastikan migrasi 005 (master pendaftaran) sudah diterapkan. Dipanggil tanpa login, jadi fungsi yang ADA
+// menjawab 'Harus login'; fungsi yang tidak ada dijawab PostgREST dengan kode PGRST202.
+export async function pastikanMigrasiPendaftaran(sb) {
+  const nol = '00000000-0000-0000-0000-000000000000';
+  const { error } = await sb.rpc('ajukan_perubahan', { p_tenant: nol, p_entitas: 'komponen_biaya', p_entitas_id: null, p_data: {} });
+  if (error?.code === 'PGRST202' || /Could not find the function/i.test(error?.message ?? '')) {
+    throw new Error(
+      'Migrasi 20261124100000_master_pendaftaran.sql belum diterapkan di project staging. ' +
+      'Jalankan: npx supabase db push --project-ref <ref-staging>, lalu ulangi tes. ' + `Detail: ${error.message}`,
+    );
+  }
+}
+
 // Pastikan migrasi 003 sudah diterapkan di project yang dipakai tes ini.
 export async function pastikanMigrasi(sb) {
   const nol = '00000000-0000-0000-0000-000000000000';
@@ -53,6 +66,7 @@ export async function pastikanMigrasi(sb) {
  */
 export async function seed(sb) {
   await pastikanMigrasi(sb);
+  await pastikanMigrasiPendaftaran(sb);
   const ids = {};
   for (const [key, email] of Object.entries(USERS)) {
     const { data, error } = await sb.auth.admin.createUser({ email, password: PASSWORD, email_confirm: true });
@@ -69,6 +83,8 @@ export async function seed(sb) {
 
   must(await sb.from('tenant_members').insert([
     { tenant_id: tenantA, user_id: ids.staffA, role: 'admin' },
+    { tenant_id: tenantA, user_id: ids.tuA, role: 'tu' },
+    { tenant_id: tenantA, user_id: ids.kepsekA, role: 'kepala_sekolah' },
     { tenant_id: tenantA, user_id: ids.guruA, role: 'guru' },
     { tenant_id: tenantA, user_id: ids.siswaA, role: 'siswa' },
   ]), 'tenant_members');
@@ -117,5 +133,27 @@ export async function seed(sb) {
     tenant_id: tenantA, siswa_id: sid.E2E001, jenis: 'SPP', periode: '2026-11', jumlah: 100000,
   }), 'tagihan');
 
-  return { tenantA, tenantB, ids, ta: ta.id, kelas: kid, siswa: sid, mapel: mp };
+  // Master pendaftaran awal ditulis lewat secret key (jalur persetujuan diuji di spec 11 dan 12)
+  const biaya = must(await sb.from('komponen_biaya').insert([
+    { tenant_id: tenantA, nama: 'Uang gedung', nominal: 5000000, wajib: true, aktif: true, urutan: 1 },
+    { tenant_id: tenantA, nama: 'Seragam', nominal: 750000, wajib: false, aktif: true, urutan: 2 },
+    { tenant_id: tenantB, nama: 'Uang gedung B', nominal: 1000000, wajib: true, aktif: true, urutan: 1 },
+  ]).select('id,nama'), 'komponen_biaya');
+  const metode = must(await sb.from('metode_pembayaran').insert([
+    { tenant_id: tenantA, jenis: 'transfer', penyedia: 'BCA', nomor: '1234567890', atas_nama: 'Yayasan Uji A', aktif: true, urutan: 1 },
+    { tenant_id: tenantB, jenis: 'transfer', penyedia: 'Mandiri', nomor: '9876543210', atas_nama: 'Yayasan Uji B', aktif: true, urutan: 1 },
+  ]).select('id,tenant_id'), 'metode_pembayaran');
+  must(await sb.from('jurusan').insert([
+    { tenant_id: tenantA, kode: 'IPA', nama: 'IPA', aktif: true },
+    { tenant_id: tenantA, kode: 'IPS', nama: 'IPS', aktif: false },
+    { tenant_id: tenantB, kode: 'IPA', nama: 'IPA B', aktif: true },
+  ]), 'jurusan');
+
+  return {
+    tenantA, tenantB, ids, ta: ta.id, kelas: kid, siswa: sid, mapel: mp,
+    biayaA: biaya.find((b) => b.nama === 'Uang gedung').id,
+    biayaB: biaya.find((b) => b.nama === 'Uang gedung B').id,
+    metodeA: metode.find((m) => m.tenant_id === tenantA).id,
+    metodeB: metode.find((m) => m.tenant_id === tenantB).id,
+  };
 }

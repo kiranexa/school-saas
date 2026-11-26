@@ -10,7 +10,7 @@
 
 ## E2E dengan Playwright
 Tes berjalan di **project Supabase staging**, bukan production.
-- `global-setup` membuat 2 sekolah uji (`e2e-a`, `e2e-b`), 5 user, dan data contoh memakai secret key; `global-teardown` menghapus semuanya.
+- `global-setup` membuat 2 sekolah uji (`e2e-a`, `e2e-b`), 7 user, dan data contoh memakai secret key; `global-teardown` menghapus semuanya.
 - Frontend dijalankan di port 5199 dengan `--mode e2e` (membaca `.env.e2e`).
 - Tes membuka `http://e2e-a.localhost:5199` dan `http://e2e-b.localhost:5199`.
 
@@ -21,7 +21,8 @@ Tes berjalan di **project Supabase staging**, bukan production.
 | Kelas `X-A2` | TIDAK diajar `guruA`; siswa `Siswa Lain A` (E2E002) |
 | `Siswa Penempatan` (E2E003) | belum punya kelas |
 | Tagihan SPP 100000 | untuk E2E001 |
-| Pengguna | `adminA` (owner), `staffA` (admin), `guruA`, `siswaA`; sekolah B: `adminB`, siswa `Siswa Sekolah B` |
+| Master pendaftaran | biaya `Uang gedung` 5.000.000 (wajib) dan `Seragam` 750.000, rekening BCA, jurusan IPA (aktif) dan IPS (nonaktif); sekolah B punya satu dari masing-masing |
+| Pengguna | `adminA` (owner), `staffA` (admin), `tuA` (tu), `kepsekA` (kepala_sekolah), `guruA`, `siswaA`; sekolah B: `adminB`, siswa `Siswa Sekolah B` |
 
 ### Cakupan
 | File | Isi |
@@ -34,6 +35,8 @@ Tes berjalan di **project Supabase staging**, bukan production.
 | `06-penempatan-kelas` | tambah/keluarkan siswa dari kelas; ganda per tahun ajaran ditolak |
 | `07-absensi-nilai` | guru simpan absensi/nilai kelasnya (tanpa duplikat), ditolak di kelas yang tidak diajar |
 | `08-keuangan` | tagihan belum -> sebagian -> lunas otomatis; guru tanpa akses tagihan; tagihan di portal siswa |
+| `11-master-pendaftaran` | admin mengajukan, kepsek menyetujui, TU mengajukan lalu membatalkan, tombol per peran, jurusan CRUD, guru tanpa menu Pendaftaran |
+| `12-pengajuan-keamanan` | tidak ada peran yang bisa menulis biaya/rekening langsung; hanya admin/tu mengajukan; hanya kepsek/owner menyetujui, bukan pengaju sendiri; validasi input; data lama tetap berlaku; visibilitas anon dan lintas sekolah; audit |
 | `09-keamanan` | admin tidak bisa memberi/mengubah owner; guru dibatasi ke kelasnya; penempatan lintas sekolah ditolak; fungsi simpan massal tertutup untuk anon |
 
 ### Setup sekali

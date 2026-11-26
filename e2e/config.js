@@ -11,6 +11,8 @@ export const USERS = {
   guruA: 'e2e-guru-a@example.com',
   siswaA: 'e2e-siswa-a@example.com',
   adminB: 'e2e-admin-b@example.com',
+  tuA: 'e2e-tu-a@example.com',         // peran tu sekolah A
+  kepsekA: 'e2e-kepsek-a@example.com', // peran kepala_sekolah sekolah A
 };
 
 export const FIXTURE_FILE = new URL('./.fixtures.json', import.meta.url);

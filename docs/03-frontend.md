@@ -36,6 +36,9 @@ Absensi, nilai, dan penempatan siswa memakai halaman tersendiri. Pola penting:
 - Penyimpanan massal lewat RPC agar atomik dan tetap diperiksa RLS.
 - Atribut `data-state` (`loading`/`ready`) pada kontainer `#page` sebagai penanda untuk tes; pemuatan yang tumpang tindih diatur dengan penanda urutan agar hanya yang terbaru yang menggambar.
 
+### Biaya, Rekening, Persetujuan (`src/pages/pengajuan.js`)
+Satu modul untuk tiga halaman (`pengajuanPage(el, t, roles, entitas)`; `entitas` null = halaman Persetujuan). Menampilkan data berlaku, pengajuan menunggu, dan riwayat. Tombol mengikuti peran (admin/tu: ajukan, batalkan; kepala_sekolah/owner: setujui, tolak) tetapi penjagaan sebenarnya di fungsi database. Menambah jenis data yang butuh persetujuan: tambahkan entri di `ENTITAS`, cabang di `pj_normalisasi`, `pj_ambil`, dan `setujui_pengajuan` (migrasi baru), dan daftarkan di `pengajuan_perubahan.entitas`.
+
 ## Konvensi
 - Teks UI bahasa Indonesia; semua nilai dinamis ke HTML lewat `esc()`.
 - Query selalu `.eq('tenant_id', t.id)`; insert menyertakan `tenant_id`; RLS tetap pengaman utama.
