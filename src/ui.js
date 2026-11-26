@@ -22,6 +22,8 @@ const SVG = {
   shield: '<path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/>',
   school: '<path d="M2 9 12 4l10 5-10 5z"/><path d="M6 11.5V16c0 1.5 3 3 6 3s6-1.5 6-3v-4.5"/>',
   logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>',
+  flag: '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/>',
+  inbox: '<polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
 };
 export const ikon = (n) => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${SVG[n] ?? ''}</svg>`;
 
@@ -32,12 +34,13 @@ const NADA = {
   pindah: 'warn', cuti: 'warn', sakit: 'warn', sebagian: 'warn',
   alpa: 'bad', belum: 'bad',
   menunggu: 'warn', disetujui: 'ok', ditolak: 'bad', dibatalkan: 'mute',
+  dibuka: 'ok', draft: 'mute', ditutup: 'bad', baru: 'info', menunggu_verifikasi: 'warn', diterima: 'ok', belum_bayar: 'bad', menunggu_konfirmasi: 'warn',
 };
 export const pill = (v) => (v == null || v === '' ? ''
   : `<span class="pill ${NADA[String(v).toLowerCase()] ?? 'mute'}">${esc(v)}</span>`);
 
 // ---------- Pesan hasil aksi ----------
-const SUKSES = /^(Tersimpan|Terhapus|Siswa ditambahkan|Siswa dikeluarkan|Pengajuan (terkirim|disetujui|ditolak|dibatalkan))/;
+const SUKSES = /^(Tersimpan|Terhapus|Siswa ditambahkan|Siswa dikeluarkan|Pendaftar (diterima|ditolak)|Pengajuan (terkirim|disetujui|ditolak|dibatalkan))/;
 export const pesan = (m) => (m
   ? `<p class="msg ${SUKSES.test(m) ? 'ok' : 'err'}" role="${SUKSES.test(m) ? 'status' : 'alert'}">${esc(m)}</p>` : '');
 
@@ -64,7 +67,7 @@ export function terapkanMerek(t) {
 
 // ---------- Kerangka ----------
 export function shellPublik(t, body, aksi = null) {
-  const kanan = aksi ?? '<a class="btn sec kecil" href="/admin">Masuk staf</a><a class="btn sec kecil" href="/siswa">Masuk siswa</a>';
+  const kanan = aksi ?? '<a class="btn kecil" href="/daftar">Daftar Siswa Baru</a><a class="btn sec kecil" href="/admin">Masuk staf</a><a class="btn sec kecil" href="/siswa">Masuk siswa</a>';
   return `<a class="lompat" href="#isi">Lewati ke konten</a>
     <header class="pub-atas"><a class="nama" href="/">${esc(t.nama)}</a>
       <nav class="pub-nav" aria-label="Menu utama">${kanan}${tombolTema()}</nav></header>

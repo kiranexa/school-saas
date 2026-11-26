@@ -1,5 +1,6 @@
 import { siswaPage, guruPage, mapelPage, tahunPage, kelasPage, jadwalPage, tagihanPage, pembayaranPage, jurusanPage } from './master.js';
 import { pengajuanPage } from './pengajuan.js';
+import { gelombangPage, pendaftarPage } from './ppdb.js';
 import { kelasSiswaPage } from './kelasSiswa.js';
 import { absensiPage } from './absensi.js';
 import { nilaiPage } from './nilai.js';
@@ -24,6 +25,8 @@ export const PAGES = {
   nilai:      { label: 'Nilai',        grup: 'Harian',   ikon: 'chart',    who: SEMUA_STAF, write: [...TULIS, 'guru'], render: (el, t, c) => nilaiPage(el, t, c.canWrite) },
   tagihan:    { label: 'Tagihan',      grup: 'Keuangan', ikon: 'receipt',  who: KEUANGAN,   write: KEUANGAN, render: (el, t, c) => tagihanPage(el, t, c.canWrite) },
   pembayaran: { label: 'Pembayaran',   grup: 'Keuangan', ikon: 'card',     who: KEUANGAN,   write: KEUANGAN, render: (el, t, c) => pembayaranPage(el, t, c.canWrite) },
+  gelombang:  { label: 'Gelombang',    grup: 'Pendaftaran', ikon: 'flag',   who: TULIS, write: TULIS, render: (el, t, c) => gelombangPage(el, t, c.canWrite) },
+  pendaftar:  { label: 'Calon Siswa',  grup: 'Pendaftaran', ikon: 'inbox',  who: TULIS, write: TULIS, render: (el, t, c) => pendaftarPage(el, t, c.canWrite) },
   jurusan:    { label: 'Jurusan',      grup: 'Pendaftaran', ikon: 'school', who: TULIS, write: TULIS, render: (el, t, c) => jurusanPage(el, t, c.canWrite) },
   biaya:      { label: 'Biaya',        grup: 'Pendaftaran', ikon: 'tag',    who: TULIS, write: [], render: (el, t, c) => pengajuanPage(el, t, c.roles, 'komponen_biaya') },
   rekening:   { label: 'Rekening',     grup: 'Pendaftaran', ikon: 'bank',   who: TULIS, write: [], render: (el, t, c) => pengajuanPage(el, t, c.roles, 'metode_pembayaran') },

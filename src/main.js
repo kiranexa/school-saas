@@ -2,6 +2,7 @@ import './styles.css';
 import { sb } from './supabase.js';
 import { esc, pill, shellPublik, shellApp, bindTema, bindShell, terapkanMerek, ikon } from './ui.js';
 import { PAGES } from './pages/index.js';
+import { ppdbPublikView } from './pages/ppdb.js';
 
 const app = document.getElementById('app');
 const STAFF = ['owner', 'kepala_sekolah', 'admin', 'tu', 'guru'];
@@ -76,7 +77,7 @@ async function landing(t) {
   const info = [t.jenjang, t.alamat].filter(Boolean).map((x) => `<p class="meta">${esc(x)}</p>`).join('');
   const galeri = g.data ?? [];
   app.innerHTML = shellPublik(t, `
-    <section class="buku"><h1>${esc(h.data?.judul ?? t.nama)}</h1>${info}</section>
+    <section class="buku"><h1>${esc(h.data?.judul ?? t.nama)}</h1>${info}<div class="baris" style="margin-top:1rem"><a class="btn" href="/daftar">Daftar Siswa Baru (PPDB)</a><a class="btn sec" href="/daftar?tab=cek">Cek Status Pendaftaran</a></div></section>
     <section class="bagian pengumuman"><h2>Pengumuman</h2>
       ${(p.data ?? []).map((x) => `<article><time datetime="${esc(x.created_at)}">${esc(tgl(x.created_at))}</time>
         <div><h3>${esc(x.judul)}</h3><p>${esc(x.isi)}</p></div></article>`).join('') || '<p class="kosong">Belum ada pengumuman.</p>'}
@@ -159,6 +160,7 @@ async function siswaView(t) {
   terapkanMerek(t);
 
   const area = location.pathname.split('/')[1];
+  if (area === 'daftar') return ppdbPublikView(app, t);
   if (area !== 'admin' && area !== 'siswa') return landing(t);
 
   const roles = await myRoles(t.id);

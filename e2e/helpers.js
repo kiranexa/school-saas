@@ -16,9 +16,12 @@ const opts = { auth: { persistSession: false, autoRefreshToken: false } };
 export const anonClient = () =>
   createClient(process.env.VITE_SUPABASE_URL, process.env.VITE_SUPABASE_ANON_KEY, opts);
 
+const cachedClients = new Map();
 export async function clientAs(email) {
+  if (cachedClients.has(email)) return cachedClients.get(email);
   const sb = anonClient();
   const { error } = await sb.auth.signInWithPassword({ email, password: PASSWORD });
   if (error) throw error;
+  cachedClients.set(email, sb);
   return sb;
 }

@@ -32,6 +32,16 @@ export async function cleanup(sb) {
 
 // Pastikan migrasi 005 (master pendaftaran) sudah diterapkan. Dipanggil tanpa login, jadi fungsi yang ADA
 // menjawab 'Harus login'; fungsi yang tidak ada dijawab PostgREST dengan kode PGRST202.
+export async function pastikanMigrasiPpdb(sb) {
+  const { error } = await sb.rpc('cek_status_ppdb', { p_nomor_registrasi: 'PPDB-0000-000000', p_pin_akses: '000000' });
+  if (error?.code === 'PGRST202' || /Could not find the function/i.test(error?.message ?? '')) {
+    throw new Error(
+      'Migrasi 20261127000000_ppdb_online.sql belum diterapkan di project staging. ' +
+      'Jalankan: npx supabase db push --remote=<ref-staging>, lalu ulangi tes. ' + `Detail: ${error.message}`,
+    );
+  }
+}
+
 export async function pastikanMigrasiPendaftaran(sb) {
   const nol = '00000000-0000-0000-0000-000000000000';
   const { error } = await sb.rpc('ajukan_perubahan', { p_tenant: nol, p_entitas: 'komponen_biaya', p_entitas_id: null, p_data: {} });

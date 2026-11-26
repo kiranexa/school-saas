@@ -111,7 +111,7 @@ test('jurusan: admin tambah dan hapus langsung (tanpa persetujuan)', async ({ pa
 
 test('guru tidak melihat menu Pendaftaran', async ({ page }) => {
   await login(page, `${URL_A}/admin`, USERS.guruA);
-  await expect(page.getByRole('link', { name: 'Siswa' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Siswa', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Biaya' })).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Rekening' })).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Persetujuan' })).toHaveCount(0);

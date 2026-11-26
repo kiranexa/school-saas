@@ -1,9 +1,17 @@
 # Progress
 
-Terakhir diperbarui: 2026-11-24
+Terakhir diperbarui: 2026-11-27
 
 ## Status singkat
 Fondasi lengkap dan teruji: database multi-tenant dengan RLS, 10 halaman admin, portal siswa, tema terang/gelap, dan tes otomatis. Cabang `feat/master-pendaftaran` menambah master jurusan, biaya, dan rekening dengan persetujuan kepala sekolah (fitur A, belum diuji di staging). Berikutnya: form pendaftaran publik + email (B), verifikasi bayar + penempatan kelas (C), pembuatan akun dari admin, portal wali.
+
+## Selesai (27 November 2026 — Fitur B: PPDB Online)
+- [x] Migrasi `20261127000000_ppdb_online.sql`: tabel `gelombang_pendaftaran` dan `pendaftaran_siswa` dengan isolasi RLS multi-tenant
+- [x] Fungsi keamanan publik `SECURITY DEFINER`: `daftar_ppdb_publik`, `cek_status_ppdb`, dan `konfirmasi_bayar_ppdb` (publik tidak bisa `SELECT` tabel pendaftar secara langsung)
+- [x] Fungsi verifikasi Admin/TU: `terima_pendaftar_ppdb` (otomatis membuat baris baru di tabel `siswa` + mencatat di `audit_log`) dan `tolak_pendaftar_ppdb`
+- [x] Halaman publik `/daftar` (formulir pendaftaran siswa baru, cetak nomor registrasi & PIN akses, cek status kelulusan, dan konfirmasi pembayaran)
+- [x] Halaman admin `/admin/gelombang` dan `/admin/pendaftar` di grup menu "Pendaftaran"
+- [x] Pengujian E2E Playwright baru: `13-ppdb-publik.spec.js` dan `14-ppdb-keamanan.spec.js`
 
 ## Selesai (21-22 November 2026)
 **Database (Supabase, migrasi 001 sampai 004)**
