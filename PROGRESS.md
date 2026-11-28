@@ -1,9 +1,20 @@
 # Progress
 
-Terakhir diperbarui: 2026-11-29
+Terakhir diperbarui: 2026-11-28
 
 ## Status singkat
 Fondasi lengkap dan teruji: database multi-tenant dengan RLS, 10 halaman admin, portal siswa, tema terang/gelap, dan tes otomatis. Fitur A (master jurusan, biaya, rekening + persetujuan kepala sekolah) dan fitur B (PPDB online: form publik, cek status, konfirmasi bayar, terima jadi siswa) sudah ada. Migrasi 007 memperbaiki B. Wizard Data Lengkap (tahap 1) menyusul di migrasi 008. Upload berkas (tahap 2) dan email otomatis (tahap 3, menunggu keputusan layanan email dan domain) belum ada. Berikutnya: tahap 2 dan 3, penempatan kelas (C), pembuatan akun dari admin, portal wali.
+
+## Selesai (28 November 2026: Perbaikan PPDB, Profil Sekolah, Platform Admin, Owner Workflow)
+- [x] **Profil sekolah** (`src/pages/master.js`): halaman "Profil" di grup "Manajemen" — edit nama, NPSN, jenjang, alamat, logo, tema, status. Sidebar nama sekolah update otomatis setelah simpan
+- [x] **Platform admin** (`src/pages/platform.js`, migrasi `20261128000000_platform_admin.sql`): CRUD tenant (sekolah) di `/platform` — hanya platform owner/admin. Tambah/edit status (active/inactive/suspended), plan (free/basic/pro), tema JSON. Tidak ada tombol hapus. RLS di `tenants`, `tenant_domains`, `tenant_members` lindungi data antar sekolah
+- [x] **Biaya & Rekening: owner bisa propose & approve** (migrasi `20261128000001_owner_ajukan.sql`, `src/pages/pengajuan.js`): owner masuk ke `PENGAJU` (bisa ajukan perubahan biaya/rekening) dan `PENYETUJU` (bisa setujui, termasuk pengajuan sendiri). Admin/TU tetap propose, kepala sekolah approve. Self-approval hanya untuk owner
+- [x] **PPDB Data Lengkap disederhanakan** (migrasi `20261128000002_ppdb_hapus_koordinat_tgl_lahir.sql`, `src/pages/ppdbFields.js`, `src/pages/ppdbWizard.js`):
+  - Hapus field `koordinat_lat_lng`
+  - `ayah_tahun_lahir` → `ayah_tanggal_lahir` (date), `ibu_tahun_lahir` → `ibu_tanggal_lahir` (date) — gunakan date picker
+  - Checkbox "sama dengan" (domisili sama KK, alamat ayah/ibu sama KK, ibu sama ayah): field alamat jadi **disabled** (bukan disembunyikan) + label "Alamat mengikuti yang dicentang di atas (tidak bisa diubah)"
+  - Migrasi draf localStorage otomatis: `ayah_tahun_lahir` → `ayah_tanggal_lahir` (YYYY-01-01), `ibu_tahun_lahir` → `ibu_tanggal_lahir`, hapus `koordinat_lat_lng`
+  - Validasi skip untuk alamat yang disabled
 
 ## Selesai (29 November 2026: PPDB tahap 1, Data Lengkap, migrasi 008)
 Rancangan: pendaftaran awal tetap singkat (nama, kontak, email, jurusan); data lengkap diisi orang tua SESUDAH itu lewat wizard dengan nomor registrasi + PIN. Data sensitif dipisah ke tabel 1:1 supaya aksesnya bisa lebih ketat.

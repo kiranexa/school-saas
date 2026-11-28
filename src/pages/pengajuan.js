@@ -5,8 +5,8 @@ import { esc, pill, pesan } from '../ui.js';
 // kepala sekolah menyetujui (fungsi database ajukan_perubahan / setujui_pengajuan / dst.).
 // Penjagaan sebenarnya ada di database; kode ini hanya menyembunyikan tombol yang tidak berlaku.
 
-const PENGAJU = ['admin', 'tu'];
-const PENYETUJU = ['kepala_sekolah', 'owner'];
+const PENGAJU = ['admin', 'tu', 'owner'];      // owner bisa propose juga
+const PENYETUJU = ['kepala_sekolah', 'owner'];  // owner & kepala_sekolah bisa approve
 
 const rupiah = (n) => `Rp ${Number(n ?? 0).toLocaleString('id-ID')}`;
 const ya = (v) => (v ? 'ya' : 'tidak');
@@ -130,8 +130,10 @@ export async function pengajuanPage(el, t, roles, entitas) {
   function kartuPengajuan(p, menunggu) {
     const c = ENTITAS[p.entitas];
     const sendiri = p.diajukan_oleh === user.id;
+    const isOwner = roles.includes('owner');
     const aksi = [];
-    if (menunggu && bisaPutuskan && !sendiri) {
+    // Owner bisa approve pengajuan sendiri; role lain tidak
+    if (menunggu && bisaPutuskan && (!sendiri || isOwner)) {
       aksi.push(`<button data-setujui="${esc(p.id)}">Setujui</button><button class="danger kecil" data-tolak="${esc(p.id)}">Tolak</button>`);
     }
     if (menunggu && sendiri && bisaAjukan) aksi.push(`<button class="sec kecil" data-batal="${esc(p.id)}">Batalkan</button>`);
@@ -141,7 +143,7 @@ export async function pengajuanPage(el, t, roles, entitas) {
       <p class="muted">Diajukan ${esc(p.diajukan_email ?? '—')} · ${esc(tglJam(p.diajukan_at))}${p.catatan ? ` · Catatan: ${esc(p.catatan)}` : ''}</p>
       ${!menunggu ? `<p>${pill(p.status)} <span class="muted">${esc(p.diputuskan_email ?? '')} · ${esc(tglJam(p.diputuskan_at))}${p.catatan_keputusan ? ` · ${esc(p.catatan_keputusan)}` : ''}</span></p>` : ''}
       ${aksi.length ? `<div class="baris">${aksi.join('')}</div>` : ''}
-      ${menunggu && bisaPutuskan && sendiri ? '<p class="muted">Anda tidak bisa menyetujui pengajuan Anda sendiri.</p>' : ''}
+      ${menunggu && bisaPutuskan && sendiri && !isOwner ? '<p class="muted">Anda tidak bisa menyetujui pengajuan Anda sendiri.</p>' : ''}
     </article>`;
   }
 

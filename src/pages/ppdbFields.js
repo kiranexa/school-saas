@@ -225,15 +225,6 @@ export const FIELDS = [
   "hi": 500
  },
  {
-  "key": "koordinat_lat_lng",
-  "label": "Koordinat (lat, lng)",
-  "kind": "koord",
-  "req": false,
-  "step": "alamat",
-  "section": "Alamat siswa",
-  "help": "Contoh: -6.200000, 106.816666"
- },
- {
   "key": "tinggi_badan",
   "label": "Tinggi badan (cm)",
   "kind": "int",
@@ -660,7 +651,7 @@ function cekNilai(f, raw) {
       return /^[0-9]{1,5}(\.[0-9]{1,2})?$/.test(n) && +n >= f.lo && +n <= f.hi ? '' : rentang();
     }
     case 'hp': return /^\+?[0-9]{8,15}$/.test(v.replace(/[\s-]/g, '')) ? '' : `${f.label} tidak valid (8 sampai 15 angka)`;
-    case 'koord': return /^-?[0-9]{1,2}(\.[0-9]+)?,-?[0-9]{1,3}(\.[0-9]+)?$/.test(v.replace(/\s/g, '')) ? '' : `${f.label} tidak valid (contoh -6.2, 106.8)`;
+    case 'date': return /^\d{4}-\d{2}-\d{2}$/.test(v) ? '' : `${f.label} format tidak valid (YYYY-MM-DD)`;
     default: return '';
   }
 }
@@ -679,6 +670,13 @@ export function validasiStep(stepId, d) {
   for (const f of FIELDS.filter((x) => x.step === stepId)) {
     if (!tampil(f, d) || f.kind === 'bool') continue;
     if (f.kind === 'alamat') {
+      // Skip validation if address is disabled (checkbox "sama dengan" dicentang)
+      const disabledMap = {
+        alamat_domisili: d.domisili_sama_kk,
+        alamat_ayah: d.ortu_sama_kk,
+        alamat_ibu: d.ortu_sama_kk || d.ibu_sama_ayah,
+      };
+      if (disabledMap[f.key]) continue;
       for (const c of ALAMAT_KOMPONEN) {
         const m = cekKomponen(c, d[f.key]?.[c.key], f.label);
         if (m) err[`${f.key}.${c.key}`] = m;

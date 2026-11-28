@@ -45,7 +45,18 @@ export async function wizardView(el, t, kred, status, keluar) {
   // ---- muat: draf perangkat ini diutamakan; bila tidak ada, ambil yang sudah tersimpan di server ----
   const draf = bacaDraf(kunci);
   if (draf) {
-    d = fusi(nilaiAwal(), draf.data);
+    // Migrasi field lama di draf ke field baru
+    const migrasi = { ...draf.data };
+    if (migrasi.ayah_tahun_lahir) {
+      migrasi.ayah_tanggal_lahir = String(migrasi.ayah_tahun_lahir) + '-01-01';
+      delete migrasi.ayah_tahun_lahir;
+    }
+    if (migrasi.ibu_tahun_lahir) {
+      migrasi.ibu_tanggal_lahir = String(migrasi.ibu_tahun_lahir) + '-01-01';
+      delete migrasi.ibu_tahun_lahir;
+    }
+    delete migrasi.koordinat_lat_lng; // buang field lama
+    d = fusi(nilaiAwal(), migrasi);
     langkah = Math.min(Math.max(Number(draf.step) || 0, 0), LAST);
     infoDraf = `Draf dipulihkan (disimpan ${new Date(draf.savedAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}).`;
   } else {
@@ -83,12 +94,19 @@ export async function wizardView(el, t, kred, status, keluar) {
 
   function alamatHtml(f) {
     const a = d[f.key] ?? {};
+    // Cek apakah alamat ini harus disabled (checkbox "sama dengan" dicentang)
+    const disabledMap = {
+      alamat_domisili: d.domisili_sama_kk,
+      alamat_ayah: d.ortu_sama_kk,
+      alamat_ibu: d.ortu_sama_kk || d.ibu_sama_ayah,
+    };
+    const isDisabled = disabledMap[f.key] === true;
     return `<div class="alamat" data-alamat="${f.key}"><h4>${esc(f.label)}${f.req ? ' *' : ''}</h4><div class="cols">${
       ALAMAT_KOMPONEN.map((c) => {
         const nama = `${f.key}.${c.key}`;
         return `<label>${esc(c.label)}<input name="${nama}" type="text" value="${esc(a[c.key] ?? '')}" maxlength="${c.mask ? 20 : c.max}"
-          placeholder="${esc(c.placeholder ?? '')}" ${c.mask ? 'inputmode="numeric"' : ''} autocomplete="off" ${errs[nama] ? 'aria-invalid="true"' : ''}>${galatHtml(nama)}</label>`;
-      }).join('')}</div></div>`;
+          placeholder="${esc(c.placeholder ?? '')}" ${c.mask ? 'inputmode="numeric"' : ''} autocomplete="off" ${isDisabled ? 'disabled' : ''} ${errs[nama] ? 'aria-invalid="true"' : ''}>${galatHtml(nama)}</label>`;
+      }).join('')}</div>${isDisabled ? '<p class="muted" style="margin-top:.5rem"><small>Alamat mengikuti yang dicentang di atas (tidak bisa diubah)</small></p>' : ''}</div>`;
   }
 
   function langkahHtml() {
@@ -148,6 +166,13 @@ export async function wizardView(el, t, kred, status, keluar) {
     if (!n || n === '_setuju') return;
     if (n.includes('.')) {
       const [kunciAlamat, komp] = n.split('.');
+      // Skip if address is disabled (checkbox "sama dengan" dicentang)
+      const disabledMap = {
+        alamat_domisili: d.domisili_sama_kk,
+        alamat_ayah: d.ortu_sama_kk,
+        alamat_ibu: d.ortu_sama_kk || d.ibu_sama_ayah,
+      };
+      if (disabledMap[kunciAlamat]) return;
       let v = input.value;
       if (komp === 'rt_rw') v = maskRtRw(v);
       if (komp === 'kode_pos') v = maskAngka(v, 5);
