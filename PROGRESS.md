@@ -1,17 +1,29 @@
 # Progress
 
-Terakhir diperbarui: 2026-11-27
+Terakhir diperbarui: 2026-11-28
 
 ## Status singkat
-Fondasi lengkap dan teruji: database multi-tenant dengan RLS, 10 halaman admin, portal siswa, tema terang/gelap, dan tes otomatis. Cabang `feat/master-pendaftaran` menambah master jurusan, biaya, dan rekening dengan persetujuan kepala sekolah (fitur A, belum diuji di staging). Berikutnya: form pendaftaran publik + email (B), verifikasi bayar + penempatan kelas (C), pembuatan akun dari admin, portal wali.
+Fondasi lengkap dan teruji: database multi-tenant dengan RLS, 10 halaman admin, portal siswa, tema terang/gelap, dan tes otomatis. Fitur A (master jurusan, biaya, rekening + persetujuan kepala sekolah) dan fitur B (PPDB online: form publik, cek status, konfirmasi bayar, terima jadi siswa) sudah ada. Migrasi 007 memperbaiki B. Email otomatis belum ada (menunggu keputusan layanan email dan domain). Berikutnya: email otomatis, penempatan kelas (C), pembuatan akun dari admin, portal wali.
 
-## Selesai (27 November 2026 — Fitur B: PPDB Online)
+## Selesai (28 November 2026: perbaikan PPDB, migrasi 007)
+Hasil tinjauan atas fitur B (27 November). Temuan yang diperbaiki di `20261127100000_ppdb_perbaikan.sql`:
+- [x] `terima_pendaftar_ppdb` selalu gagal (memakai kolom `jenis_kelamin`/`tanggal_lahir`, padahal `siswa.jk`/`tgl_lahir`; kolom `audit_log` juga salah). Sekarang benar, baris dikunci, NIS ganda diberi pesan jelas
+- [x] Biaya berasal dari master `komponen_biaya` (persetujuan kepala sekolah) dan DISALIN ke pendaftar (`rincian_biaya`, `total_biaya`). `gelombang_pendaftaran.biaya_daftar` dibekukan (tidak dipakai)
+- [x] Terima pendaftar yang belum bayar wajib konfirmasi lunas oleh admin (`p_konfirmasi_lunas`), tercatat di audit
+- [x] Konfirmasi bayar ditolak jika sudah diterima/ditolak/lunas; tujuan bayar harus metode aktif milik sekolah itu
+- [x] Pembatas: 200 pendaftaran per sekolah per jam, 5 per nomor HP per hari, duplikat nama + tanggal lahir ditolak, PIN terkunci 30 menit setelah 5 kali salah
+- [x] Nomor registrasi (8 hex) dan PIN dari `gen_random_uuid()`; PIN dan penghitung percobaan tidak bisa dibaca staf (grant kolom); pendaftar tidak bisa ditulis langsung
+- [x] Kolom `email_wali` (wajib di form). Pengiriman email belum ada
+- [x] Spec `13-ppdb-publik` tidak pernah menjalankan tes (kata `test(` hilang); ditulis ulang. Spec `14-ppdb-keamanan` diperluas menjadi 9 tes
+- [x] Diuji di Postgres lokal (72 pemeriksaan SQL, termasuk jalur upgrade dari 006) dan di browser dengan Supabase tiruan (28 pemeriksaan)
+
+## Selesai (27 November 2026: Fitur B, PPDB Online, versi awal oleh Gemini)
 - [x] Migrasi `20261127000000_ppdb_online.sql`: tabel `gelombang_pendaftaran` dan `pendaftaran_siswa` dengan isolasi RLS multi-tenant
 - [x] Fungsi keamanan publik `SECURITY DEFINER`: `daftar_ppdb_publik`, `cek_status_ppdb`, dan `konfirmasi_bayar_ppdb` (publik tidak bisa `SELECT` tabel pendaftar secara langsung)
 - [x] Fungsi verifikasi Admin/TU: `terima_pendaftar_ppdb` (otomatis membuat baris baru di tabel `siswa` + mencatat di `audit_log`) dan `tolak_pendaftar_ppdb`
 - [x] Halaman publik `/daftar` (formulir pendaftaran siswa baru, cetak nomor registrasi & PIN akses, cek status kelulusan, dan konfirmasi pembayaran)
 - [x] Halaman admin `/admin/gelombang` dan `/admin/pendaftar` di grup menu "Pendaftaran"
-- [x] Pengujian E2E Playwright baru: `13-ppdb-publik.spec.js` dan `14-ppdb-keamanan.spec.js`
+- [x] Spec e2e `13-ppdb-publik` dan `14-ppdb-keamanan` (lihat perbaikan di atas: 13 sebelumnya tidak menjalankan tes)
 
 ## Selesai (21-22 November 2026)
 **Database (Supabase, migrasi 001 sampai 004)**
@@ -40,6 +52,8 @@ Fondasi lengkap dan teruji: database multi-tenant dengan RLS, 10 halaman admin, 
 - [x] Dokumentasi: `CLAUDE.md`, `docs/00` sampai `docs/06`, skill proyek di `.claude/skills/`
 
 ## Belum terverifikasi
+- [ ] Migrasi 007 dan semua spec baru (11 sampai 14) belum dijalankan terhadap Supabase asli. Butuh project Supabase uji TERPISAH: `.env.e2e` saat ini menunjuk ke project yang sama dengan production
+- [ ] Perlindungan spam hanya di database (pembatas per sekolah/HP). Belum ada captcha (Cloudflare Turnstile butuh verifikasi di Edge Function)
 - [ ] Fitur A di staging: terapkan migrasi 20261124100000, jalankan `npm run test:e2e` (13 tes baru di spec 11 dan 12 belum pernah dijalankan terhadap Supabase asli)
 - [ ] Tampilan halaman Biaya/Rekening/Persetujuan di browser asli (textarea belum punya gaya khusus di `styles.css`; daftar `.rincian` memakai gaya bawaan)
 - [ ] 5 tes tampilan baru (`10-tampilan`) dan tampilan di browser asli: belum dijalankan setelah redesain
@@ -47,7 +61,7 @@ Fondasi lengkap dan teruji: database multi-tenant dengan RLS, 10 halaman admin, 
 - [ ] Workflow `deploy-db.yml` butuh 3 secret GitHub; belum dipastikan terisi
 
 ## Berikutnya (urut)
-0. [ ] Pendaftaran siswa baru: (B) form publik `/daftar`, email otomatis (Edge Function + layanan email), form konfirmasi bayar, salin rincian biaya ke data pendaftar saat mendaftar; (C) verifikasi pembayaran, tombol tutup pendaftaran, penempatan ke kelas (tambah `kelas.jurusan_id` dan `kelas.kapasitas`, tampil "X-IPA-1: 34/36")
+0. [ ] Pendaftaran siswa baru: (B2) email otomatis ke orang tua (Edge Function + layanan email; butuh domain pengirim) dan captcha; (C) verifikasi pembayaran, tombol tutup pendaftaran, penempatan ke kelas (tambah `kelas.jurusan_id` dan `kelas.kapasitas`, tampil "X-IPA-1: 34/36")
 1. [ ] Tinjau tampilan di browser dan HP, sesuaikan (warna, huruf, jarak); pastikan 43 tes hijau
 2. [ ] Pembuatan akun siswa/guru dari `/admin` (Edge Function dengan secret key di server; usulan: password sementara yang ditampilkan sekali; keputusan belum final)
 3. [ ] Portal wali (`/wali`): data anak, absensi, nilai, tagihan

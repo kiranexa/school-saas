@@ -2,6 +2,13 @@ import { sb } from '../supabase.js';
 import { esc, pill, pesan, shellPublik, bindTema } from '../ui.js';
 
 const rupiah = (n) => 'Rp ' + Number(n || 0).toLocaleString('id-ID');
+const rincianBiaya = (list) => {
+  const l = Array.isArray(list) ? list : [];
+  if (!l.length) return '';
+  const total = l.filter((b) => b.wajib).reduce((s, b) => s + Number(b.nominal), 0);
+  return `<ul class="rincian">${l.map((b) => `<li>${esc(b.nama)}: <b>${esc(rupiah(b.nominal))}</b>${b.wajib ? '' : ' <span class="muted">(opsional, tidak dihitung)</span>'}</li>`).join('')}</ul>
+    <p><strong>Total biaya wajib:</strong> <span id="total-biaya">${esc(rupiah(total))}</span></p>`;
+};
 const tgl = (s) => (s ? new Date(s).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
 
 // =====================================================================
@@ -11,15 +18,17 @@ export async function ppdbPublikView(app, t) {
   const awalTab = new URLSearchParams(location.search).get('tab') === 'cek' ? 'cek' : 'daftar';
   let tab = awalTab;
 
-  const [{ data: gelList }, { data: jurList }, { data: rekList }] = await Promise.all([
+  const [{ data: gelList }, { data: jurList }, { data: rekList }, { data: biayaList }] = await Promise.all([
     sb.from('gelombang_pendaftaran').select('*').eq('tenant_id', t.id).order('created_at', { ascending: false }),
     sb.from('jurusan').select('id, kode, nama').eq('tenant_id', t.id).eq('aktif', true).order('nama'),
     sb.from('metode_pembayaran').select('id, jenis, penyedia, nomor, atas_nama, instruksi').eq('tenant_id', t.id).eq('aktif', true).order('urutan'),
+    sb.from('komponen_biaya').select('nama, nominal, wajib').eq('tenant_id', t.id).eq('aktif', true).order('urutan'),
   ]);
 
   const terbuka = gelList ?? [];
   const jurusan = jurList ?? [];
   const rekening = rekList ?? [];
+  const biaya = biayaList ?? [];
   let hasilDaftar = null;
   let hasilCek = null;
   let kredensialCek = { nomor_registrasi: '', pin_akses: '' };
@@ -46,7 +55,8 @@ export async function ppdbPublikView(app, t) {
               <p>Simpan Nomor Registrasi dan PIN Akses berikut untuk mengecek status kelulusan serta konfirmasi pembayaran:</p>
               <p><strong>Nomor Registrasi:</strong> <code id="out-noreg">${esc(hasilDaftar.nomor_registrasi)}</code><br>
                  <strong>PIN Akses:</strong> <code id="out-pin">${esc(hasilDaftar.pin_akses)}</code><br>
-                 <strong>Biaya Pendaftaran:</strong> ${esc(rupiah(hasilDaftar.biaya_daftar))}</p>
+                 <span class="muted">PIN hanya ditampilkan sekali ini. Catat atau foto layar ini.</span></p>
+              ${rincianBiaya(hasilDaftar.rincian_biaya)}
               <div class="baris">
                 <button type="button" id="lanjut-cek">Lanjut Cek Status / Konfirmasi Bayar</button>
                 <button type="button" class="sec" id="daftar-lagi">Daftarkan Siswa Lain</button>
@@ -60,10 +70,11 @@ export async function ppdbPublikView(app, t) {
           ` : `
             <form id="f-ppdb" class="panel">
               <h2>Isi Formulir Calon Siswa</h2>
+              ${biaya.length ? `<div id="info-biaya"><h4>Rincian biaya</h4>${rincianBiaya(biaya)}</div>` : ''}
               <div class="cols">
                 <label>Gelombang pendaftaran *
                   <select name="gelombang_id" required>
-                    ${terbuka.map((g) => `<option value="${esc(g.id)}">${esc(g.nama)} (${esc(rupiah(g.biaya_daftar))})</option>`).join('')}
+                    ${terbuka.map((g) => `<option value="${esc(g.id)}">${esc(g.nama)}</option>`).join('')}
                   </select>
                 </label>
                 ${jurusan.length ? `
@@ -75,7 +86,7 @@ export async function ppdbPublikView(app, t) {
                   </label>
                 ` : '<input type="hidden" name="jurusan_id" value="">'}
                 <label>Nama lengkap calon siswa *<input name="nama_lengkap" required maxlength="150"></label>
-                <label>NIK<input name="nik" maxlength="20"></label>
+                <label>NIK (16 angka)<input name="nik" inputmode="numeric" maxlength="16" pattern="[0-9]{16}" title="16 angka"></label>
                 <label>Jenis kelamin *
                   <select name="jenis_kelamin" required>
                     <option value="L">Laki-laki</option>
@@ -83,10 +94,11 @@ export async function ppdbPublikView(app, t) {
                   </select>
                 </label>
                 <label>Tempat lahir<input name="tempat_lahir" maxlength="100"></label>
-                <label>Tanggal lahir<input name="tanggal_lahir" type="date"></label>
+                <label>Tanggal lahir *<input name="tanggal_lahir" type="date" required></label>
                 <label>Asal sekolah<input name="asal_sekolah" maxlength="150"></label>
                 <label>Nama orang tua / wali *<input name="nama_wali" required maxlength="150"></label>
-                <label>No. HP / WhatsApp wali *<input name="no_hp_wali" type="tel" required maxlength="30"></label>
+                <label>No. HP / WhatsApp wali *<input name="no_hp_wali" type="tel" required maxlength="20"></label>
+                <label>Email orang tua / wali *<input name="email_wali" type="email" required maxlength="200"></label>
                 <label>Alamat lengkap<textarea name="alamat" rows="2" maxlength="500"></textarea></label>
               </div>
               <div class="baris" style="margin-top:1rem"><button>Kirim Pendaftaran</button></div>
@@ -109,10 +121,10 @@ export async function ppdbPublikView(app, t) {
               <h3>${esc(hasilCek.nama_lengkap)} (${esc(hasilCek.nomor_registrasi)})</h3>
               <p><strong>Gelombang:</strong> ${esc(hasilCek.nama_gelombang)}${hasilCek.nama_jurusan ? ` · <strong>Jurusan:</strong> ${esc(hasilCek.nama_jurusan)}` : ''}</p>
               <p><strong>Status Pendaftaran:</strong> ${pill(hasilCek.status)} &nbsp; <strong>Status Pembayaran:</strong> ${pill(hasilCek.status_bayar)}</p>
-              <p><strong>Biaya Pendaftaran:</strong> ${esc(rupiah(hasilCek.biaya_daftar))}</p>
+              ${rincianBiaya(hasilCek.rincian_biaya)}
               ${hasilCek.catatan_admin ? `<p><strong>Catatan Sekolah:</strong> ${esc(hasilCek.catatan_admin)}</p>` : ''}
 
-              ${Number(hasilCek.biaya_daftar) > 0 && hasilCek.status_bayar !== 'lunas' ? `
+              ${Number(hasilCek.total_biaya) > 0 && hasilCek.status_bayar !== 'lunas' && !['diterima', 'ditolak'].includes(hasilCek.status) ? `
                 <hr style="margin:1rem 0">
                 <h4>Konfirmasi Pembayaran Pendaftaran</h4>
                 ${rekening.length ? `
@@ -129,7 +141,7 @@ export async function ppdbPublikView(app, t) {
                         </select>
                       </label>
                     ` : '<input type="hidden" name="metode_bayar_id" value="">'}
-                    <label>Nominal ditransfer (Rp) *<input name="nominal_bayar" type="number" min="1" value="${esc(hasilCek.biaya_daftar)}" required></label>
+                    <label>Nominal ditransfer (Rp) *<input name="nominal_bayar" type="number" min="1" value="${esc(hasilCek.total_biaya)}" required></label>
                     <label>Nama pengirim / rekening *<input name="nama_pengirim" value="${esc(hasilCek.nama_pengirim ?? '')}" required></label>
                     <label>Catatan / nomor referensi<input name="catatan_bayar" placeholder="Opsional"></label>
                   </div>
@@ -173,9 +185,10 @@ export async function ppdbPublikView(app, t) {
           p_asal_sekolah: fd.get('asal_sekolah') || null,
           p_nama_wali: fd.get('nama_wali'),
           p_no_hp_wali: fd.get('no_hp_wali'),
+          p_email_wali: fd.get('email_wali'),
           p_alamat: fd.get('alamat') || null,
         });
-        if (error) { msg = error.message; render(); return; }
+        if (error || data?.ok === false) { msg = error?.message ?? data.pesan; render(); return; }
         hasilDaftar = data;
         msg = '';
         render();
@@ -195,7 +208,7 @@ export async function ppdbPublikView(app, t) {
           p_nomor_registrasi: kredensialCek.nomor_registrasi,
           p_pin_akses: kredensialCek.pin_akses,
         });
-        if (error) { hasilCek = null; msg = error.message; render(); return; }
+        if (error || data?.ok === false) { hasilCek = null; msg = error?.message ?? data.pesan; render(); return; }
         hasilCek = data;
         msg = '';
         render();
@@ -207,7 +220,7 @@ export async function ppdbPublikView(app, t) {
       fBayar.onsubmit = async (e) => {
         e.preventDefault();
         const fd = new FormData(fBayar);
-        const { error } = await sb.rpc('konfirmasi_bayar_ppdb', {
+        const { data: hasil, error } = await sb.rpc('konfirmasi_bayar_ppdb', {
           p_nomor_registrasi: kredensialCek.nomor_registrasi,
           p_pin_akses: kredensialCek.pin_akses,
           p_metode_bayar_id: fd.get('metode_bayar_id') || null,
@@ -215,7 +228,7 @@ export async function ppdbPublikView(app, t) {
           p_nama_pengirim: fd.get('nama_pengirim'),
           p_catatan_bayar: fd.get('catatan_bayar') || null,
         });
-        if (error) { msg = error.message; render(); return; }
+        if (error || hasil?.ok === false) { msg = error?.message ?? hasil.pesan; render(); return; }
         const { data } = await sb.rpc('cek_status_ppdb', {
           p_nomor_registrasi: kredensialCek.nomor_registrasi,
           p_pin_akses: kredensialCek.pin_akses,
@@ -252,7 +265,7 @@ export async function gelombangPage(el, t, canWrite) {
   function draw() {
     el.innerHTML = `
       <h1 class="judul">Gelombang Pendaftaran</h1>
-      <p class="sub">Atur jadwal pembukaan pendaftaran siswa baru, kuota, dan biaya pendaftaran.</p>
+      <p class="sub">Atur jadwal pembukaan pendaftaran siswa baru, dan kuota. Biaya diatur di menu Biaya (perubahan perlu persetujuan kepala sekolah).</p>
       ${pesan(msg)}
       <div class="toolbar">
         ${canWrite ? '<button id="new">+ Tambah gelombang</button>' : ''}
@@ -272,7 +285,6 @@ export async function gelombangPage(el, t, canWrite) {
             <label>Tanggal buka<input name="tanggal_buka" type="date" value="${esc(form.tanggal_buka ?? '')}"></label>
             <label>Tanggal tutup<input name="tanggal_tutup" type="date" value="${esc(form.tanggal_tutup ?? '')}"></label>
             <label>Kuota (kosongkan jika tanpa batas)<input name="kuota" type="number" min="1" value="${esc(form.kuota ?? '')}"></label>
-            <label>Biaya pendaftaran (Rp)<input name="biaya_daftar" type="number" min="0" value="${esc(form.biaya_daftar ?? 0)}"></label>
             <label>Status *
               <select name="status">
                 ${['draft', 'dibuka', 'ditutup'].map((s) => `<option value="${s}" ${(form.status ?? 'draft') === s ? 'selected' : ''}>${s}</option>`).join('')}
@@ -283,13 +295,12 @@ export async function gelombangPage(el, t, canWrite) {
         </form>
       ` : ''}
       <div class="tabel"><table>
-        <thead><tr><th>Nama</th><th>Periode</th><th>Kuota</th><th>Biaya</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th>Nama</th><th>Periode</th><th>Kuota</th><th>Status</th><th></th></tr></thead>
         <tbody>
           ${rows.map((r) => `<tr>
             <td>${esc(r.nama)}</td>
             <td>${esc(tgl(r.tanggal_buka))} – ${esc(tgl(r.tanggal_tutup))}</td>
             <td>${r.kuota ?? '∞'}</td>
-            <td>${esc(rupiah(r.biaya_daftar))}</td>
             <td>${pill(r.status)}</td>
             <td class="aksi">${canWrite ? `<button class="sec kecil" data-edit="${esc(r.id)}">Ubah</button>` : ''}</td>
           </tr>`).join('')}
@@ -297,7 +308,7 @@ export async function gelombangPage(el, t, canWrite) {
       </table>${rows.length === 0 ? '<p class="kosong">Belum ada gelombang pendaftaran.</p>' : ''}</div>
     `;
 
-    if (el.querySelector('#new')) el.querySelector('#new').onclick = () => { form = { status: 'dibuka', biaya_daftar: 0 }; msg = ''; draw(); };
+    if (el.querySelector('#new')) el.querySelector('#new').onclick = () => { form = { status: 'dibuka' }; msg = ''; draw(); };
     if (el.querySelector('#cancel')) el.querySelector('#cancel').onclick = () => { form = null; draw(); };
     el.querySelectorAll('[data-edit]').forEach((b) => b.onclick = () => {
       form = { ...rows.find((x) => x.id === b.dataset.edit) }; msg = ''; draw();
@@ -314,7 +325,6 @@ export async function gelombangPage(el, t, canWrite) {
           tanggal_buka: fd.get('tanggal_buka') || null,
           tanggal_tutup: fd.get('tanggal_tutup') || null,
           kuota: fd.get('kuota') ? Number(fd.get('kuota')) : null,
-          biaya_daftar: Number(fd.get('biaya_daftar') || 0),
           status: fd.get('status'),
         };
         const res = form.id
@@ -333,13 +343,17 @@ export async function gelombangPage(el, t, canWrite) {
 // =====================================================================
 // 3. ADMIN PAGE: DAFTAR CALON SISWA & VERIFIKASI
 // =====================================================================
+// kolom PIN tidak boleh dibaca staf (dicabut di database), jadi tidak memakai select('*')
+const KOLOM_PENDAFTAR = 'id, nomor_registrasi, nama_lengkap, asal_sekolah, nama_wali, no_hp_wali, email_wali, status, status_bayar, '
+  + 'nominal_bayar, nama_pengirim, total_biaya, created_at, gelombang_pendaftaran(nama), jurusan(nama)';
+
 export async function pendaftarPage(el, t, canWrite) {
   let rows = [], filter = '', msg = '';
 
   async function load() {
     el.dataset.state = 'loading';
     let q = sb.from('pendaftaran_siswa')
-      .select('*, gelombang_pendaftaran(nama), jurusan(nama)')
+      .select(KOLOM_PENDAFTAR)
       .eq('tenant_id', t.id)
       .order('created_at', { ascending: false });
     if (filter) q = q.eq('status', filter);
@@ -369,8 +383,8 @@ export async function pendaftarPage(el, t, canWrite) {
             <td><code>${esc(r.nomor_registrasi)}</code></td>
             <td><b>${esc(r.nama_lengkap)}</b><br><span class="muted">${esc(r.asal_sekolah ?? '')}</span></td>
             <td>${esc(r.gelombang_pendaftaran?.nama ?? '—')}${r.jurusan?.nama ? `<br><span class="muted">${esc(r.jurusan.nama)}</span>` : ''}</td>
-            <td>${esc(r.nama_wali)}<br><span class="muted">${esc(r.no_hp_wali)}</span></td>
-            <td>${pill(r.status_bayar)}${r.nama_pengirim ? `<br><span class="muted">${esc(r.nama_pengirim)} (${esc(rupiah(r.nominal_bayar))})</span>` : ''}</td>
+            <td>${esc(r.nama_wali)}<br><span class="muted">${esc(r.no_hp_wali)}${r.email_wali ? ` · ${esc(r.email_wali)}` : ''}</span></td>
+            <td>${pill(r.status_bayar)}<br><span class="muted">tagihan ${esc(rupiah(r.total_biaya))}</span>${r.nama_pengirim ? `<br><span class="muted">${esc(r.nama_pengirim)} (${esc(rupiah(r.nominal_bayar))})</span>` : ''}</td>
             <td>${pill(r.status)}</td>
             <td class="aksi">
               ${canWrite && r.status !== 'diterima' ? `
@@ -387,7 +401,10 @@ export async function pendaftarPage(el, t, canWrite) {
     el.querySelectorAll('[data-terima]').forEach((b) => b.onclick = async () => {
       const nis = prompt('Masukkan NIS untuk siswa baru ini (opsional, bisa diisi nanti):', '');
       if (nis === null) return;
-      const { error } = await sb.rpc('terima_pendaftar_ppdb', { p_pendaftaran_id: b.dataset.terima, p_nis: nis });
+      const r = rows.find((x) => x.id === b.dataset.terima);
+      const belumBayar = r && Number(r.total_biaya) > 0 && r.status_bayar === 'belum_bayar';
+      if (belumBayar && !confirm('Pendaftar ini belum mengonfirmasi pembayaran. Terima dan tandai LUNAS hanya jika pembayaran sudah Anda terima langsung (mis. tunai). Lanjutkan?')) return;
+      const { error } = await sb.rpc('terima_pendaftar_ppdb', { p_pendaftaran_id: b.dataset.terima, p_nis: nis, p_konfirmasi_lunas: belumBayar });
       msg = error ? error.message : 'Pendaftar diterima sebagai siswa.';
       await load();
     });

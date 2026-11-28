@@ -41,7 +41,17 @@ Aturan persetujuan (dijaga di database):
 - `batalkan_pengajuan(id)`: hanya pengaju, selama menunggu.
 - Unique parsial `pengajuan_menunggu_uq`: satu pengajuan menunggu per data.
 - Tabel live dicabut izin insert/update/delete untuk `anon` dan `authenticated`; fungsi berjalan `security definer` dengan pemeriksaan tenant dan peran sendiri.
-- Saat pendaftaran (fitur B), rincian biaya HARUS disalin ke data pendaftar agar perubahan nominal berikutnya tidak mengubah tagihan lama.
+- Saat pendaftaran, rincian biaya disalin ke data pendaftar (`rincian_biaya`, `total_biaya`) sehingga perubahan nominal berikutnya tidak mengubah tagihan lama.
+
+## PPDB online (migrasi 20261127000000 dan perbaikannya 20261127100000)
+| Tabel / fungsi | Keterangan |
+|---|---|
+| `gelombang_pendaftaran` | jadwal, kuota (opsional), status draft/dibuka/ditutup. Kolom `biaya_daftar` TIDAK dipakai (dibekukan trigger); biaya = master `komponen_biaya` |
+| `pendaftaran_siswa` | data calon siswa, `nomor_registrasi` (8 hex), `pin_akses`, `email_wali`, `rincian_biaya`, `total_biaya`, `status` (baru, menunggu_verifikasi, diterima, ditolak), `status_bayar` (belum_bayar, menunggu_konfirmasi, lunas). Tidak bisa ditulis langsung; staf tidak bisa membaca `pin_akses` (grant kolom) |
+| `daftar_ppdb_publik` (anon) | validasi lengkap, wajib jurusan jika sekolah punya jurusan aktif, pembatas (200/jam/sekolah, 5/HP/hari), salin rincian biaya |
+| `cek_status_ppdb`, `konfirmasi_bayar_ppdb` (anon) | memakai `ppdb_cek_kredensial`: PIN salah dikembalikan sebagai `{ok:false,pesan}` (bukan exception, agar penghitung percobaan tersimpan); 5 kali salah mengunci 30 menit |
+| `terima_pendaftar_ppdb`, `tolak_pendaftar_ppdb` | owner, kepala_sekolah, admin, tu. Terima membuat baris `siswa`, idempoten, mencatat `audit_log` (tanpa PIN). Pendaftar belum bayar hanya bisa diterima dengan `p_konfirmasi_lunas = true` |
+- Menambah kolom baru di `pendaftaran_siswa`: tambahkan juga `grant select (kolom)` untuk `authenticated`, dan perbarui `KOLOM_PENDAFTAR` di `src/pages/ppdb.js` (halaman admin tidak memakai `select('*')`).
 
 ## Fungsi dan trigger
 | Nama | Fungsi |

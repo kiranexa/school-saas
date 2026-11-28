@@ -36,6 +36,8 @@ Tes berjalan di **project Supabase staging**, bukan production.
 | `07-absensi-nilai` | guru simpan absensi/nilai kelasnya (tanpa duplikat), ditolak di kelas yang tidak diajar |
 | `08-keuangan` | tagihan belum -> sebagian -> lunas otomatis; guru tanpa akses tagihan; tagihan di portal siswa |
 | `11-master-pendaftaran` | admin mengajukan, kepsek menyetujui, TU mengajukan lalu membatalkan, tombol per peran, jurusan CRUD, guru tanpa menu Pendaftaran |
+| `13-ppdb-publik` | alur layar PPDB: admin buka gelombang, orang tua daftar (rincian biaya dari master), konfirmasi bayar, admin terima jadi siswa; PIN salah tampil sebagai pesan |
+| `14-ppdb-keamanan` | tabel pendaftar tertutup untuk anon dan tulis langsung, PIN tidak terbaca staf, validasi, biaya disalin dan tidak berubah, `biaya_daftar` beku, kunci PIN, batas per HP, metode lintas sekolah, terima/tolak per peran, audit tanpa PIN |
 | `12-pengajuan-keamanan` | tidak ada peran yang bisa menulis biaya/rekening langsung; hanya admin/tu mengajukan; hanya kepsek/owner menyetujui, bukan pengaju sendiri; validasi input; data lama tetap berlaku; visibilitas anon dan lintas sekolah; audit |
 | `09-keamanan` | admin tidak bisa memberi/mengubah owner; guru dibatasi ke kelasnya; penempatan lintas sekolah ditolak; fungsi simpan massal tertutup untuk anon |
 

@@ -33,11 +33,17 @@ export async function cleanup(sb) {
 // Pastikan migrasi 005 (master pendaftaran) sudah diterapkan. Dipanggil tanpa login, jadi fungsi yang ADA
 // menjawab 'Harus login'; fungsi yang tidak ada dijawab PostgREST dengan kode PGRST202.
 export async function pastikanMigrasiPpdb(sb) {
-  const { error } = await sb.rpc('cek_status_ppdb', { p_nomor_registrasi: 'PPDB-0000-000000', p_pin_akses: '000000' });
+  // 007 menggantikan daftar_ppdb_publik (12 argumen) dengan versi 13 argumen. Dipanggil dengan data kosong:
+  // fungsi yang ADA menjawab galat validasi; yang tidak ada dijawab PostgREST dengan PGRST202.
+  const { error } = await sb.rpc('daftar_ppdb_publik', {
+    p_tenant_slug: 'tidak-ada', p_gelombang_id: '00000000-0000-0000-0000-000000000000', p_jurusan_id: null,
+    p_nama_lengkap: '', p_nik: null, p_jenis_kelamin: 'L', p_tempat_lahir: null, p_tanggal_lahir: null,
+    p_asal_sekolah: null, p_nama_wali: '', p_no_hp_wali: '', p_email_wali: '', p_alamat: null,
+  });
   if (error?.code === 'PGRST202' || /Could not find the function/i.test(error?.message ?? '')) {
     throw new Error(
-      'Migrasi 20261127000000_ppdb_online.sql belum diterapkan di project staging. ' +
-      'Jalankan: npx supabase db push --remote=<ref-staging>, lalu ulangi tes. ' + `Detail: ${error.message}`,
+      'Migrasi 20261127000000_ppdb_online.sql dan 20261127100000_ppdb_perbaikan.sql belum diterapkan di database uji. ' +
+      'Jalankan: npx supabase db push --remote=<ref-database-uji>, lalu ulangi tes. ' + `Detail: ${error.message}`,
     );
   }
 }
@@ -48,7 +54,7 @@ export async function pastikanMigrasiPendaftaran(sb) {
   if (error?.code === 'PGRST202' || /Could not find the function/i.test(error?.message ?? '')) {
     throw new Error(
       'Migrasi 20261124100000_master_pendaftaran.sql belum diterapkan di project staging. ' +
-      'Jalankan: npx supabase db push --project-ref <ref-staging>, lalu ulangi tes. ' + `Detail: ${error.message}`,
+      'Jalankan: npx supabase db push --remote=<ref-database-uji>, lalu ulangi tes. ' + `Detail: ${error.message}`,
     );
   }
 }
