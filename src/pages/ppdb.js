@@ -1,5 +1,13 @@
 import { sb } from '../supabase.js';
 import { esc, pill, pesan, shellPublik, bindTema } from '../ui.js';
+import { wizardView } from './ppdbWizard.js';
+import { bagianRingkasan } from './ppdbFields.js';
+
+// Ubah ke true setelah email otomatis (tahap 3) aktif; sampai itu, jangan menjanjikan email ke orang tua.
+const EMAIL_OTOMATIS_AKTIF = false;
+const CATATAN_EMAIL = EMAIL_OTOMATIS_AKTIF
+  ? 'Penting: Masukkan alamat email aktif Orang Tua/Wali (bukan email anak). Instruksi pembayaran dan status verifikasi akan dikirim ke email ini.'
+  : 'Penting: Masukkan alamat email aktif Orang Tua/Wali (bukan email anak). Email ini dipakai sekolah untuk menghubungi Anda.';
 
 const rupiah = (n) => 'Rp ' + Number(n || 0).toLocaleString('id-ID');
 const rincianBiaya = (list) => {
@@ -31,6 +39,7 @@ export async function ppdbPublikView(app, t) {
   const biaya = biayaList ?? [];
   let hasilDaftar = null;
   let hasilCek = null;
+  let nilaiDaftar = null;   // isian form pendaftaran (hanya di memori): tidak hilang saat galat atau pindah tab
   let kredensialCek = { nomor_registrasi: '', pin_akses: '' };
   let msg = '';
 
@@ -47,7 +56,7 @@ export async function ppdbPublikView(app, t) {
 
       ${pesan(msg)}
 
-      ${tab === 'daftar' ? `
+      ${tab === 'lengkap' ? '<section class="bagian"><div id="wizard-host"></div></section>' : tab === 'daftar' ? `
         <section class="bagian">
           ${hasilDaftar ? `
             <div class="panel" style="border-left:4px solid var(--brand)">
@@ -58,7 +67,8 @@ export async function ppdbPublikView(app, t) {
                  <span class="muted">PIN hanya ditampilkan sekali ini. Catat atau foto layar ini.</span></p>
               ${rincianBiaya(hasilDaftar.rincian_biaya)}
               <div class="baris">
-                <button type="button" id="lanjut-cek">Lanjut Cek Status / Konfirmasi Bayar</button>
+                <button type="button" id="lengkapi">Lengkapi Data Siswa Sekarang</button>
+                <button type="button" class="sec" id="lanjut-cek">Lanjut Cek Status / Konfirmasi Bayar</button>
                 <button type="button" class="sec" id="daftar-lagi">Daftarkan Siswa Lain</button>
               </div>
             </div>
@@ -98,7 +108,9 @@ export async function ppdbPublikView(app, t) {
                 <label>Asal sekolah<input name="asal_sekolah" maxlength="150"></label>
                 <label>Nama orang tua / wali *<input name="nama_wali" required maxlength="150"></label>
                 <label>No. HP / WhatsApp wali *<input name="no_hp_wali" type="tel" required maxlength="20"></label>
-                <label>Email orang tua / wali *<input name="email_wali" type="email" required maxlength="200"></label>
+                <label>Email orang tua / wali *<input name="email_wali" type="email" required maxlength="200" autocomplete="email">
+                  <small class="muted" id="catatan-email">${esc(CATATAN_EMAIL)}</small></label>
+                <label>Ulangi email orang tua / wali *<input name="email_wali2" type="email" required maxlength="200" autocomplete="off"></label>
                 <label>Alamat lengkap<textarea name="alamat" rows="2" maxlength="500"></textarea></label>
               </div>
               <div class="baris" style="margin-top:1rem"><button>Kirim Pendaftaran</button></div>
@@ -122,6 +134,8 @@ export async function ppdbPublikView(app, t) {
               <p><strong>Gelombang:</strong> ${esc(hasilCek.nama_gelombang)}${hasilCek.nama_jurusan ? ` · <strong>Jurusan:</strong> ${esc(hasilCek.nama_jurusan)}` : ''}</p>
               <p><strong>Status Pendaftaran:</strong> ${pill(hasilCek.status)} &nbsp; <strong>Status Pembayaran:</strong> ${pill(hasilCek.status_bayar)}</p>
               ${rincianBiaya(hasilCek.rincian_biaya)}
+              <p><strong>Data Lengkap:</strong> ${hasilCek.data_lengkap_terisi ? 'sudah diisi' : 'belum diisi'}
+                ${hasilCek.status !== 'ditolak' ? `<button type="button" class="kecil" id="isi-lengkap">${hasilCek.data_lengkap_terisi ? 'Ubah Data Lengkap' : 'Isi Data Lengkap'}</button>` : ''}</p>
               ${hasilCek.catatan_admin ? `<p><strong>Catatan Sekolah:</strong> ${esc(hasilCek.catatan_admin)}</p>` : ''}
 
               ${Number(hasilCek.total_biaya) > 0 && hasilCek.status_bayar !== 'lunas' && !['diterima', 'ditolak'].includes(hasilCek.status) ? `
@@ -168,11 +182,36 @@ export async function ppdbPublikView(app, t) {
       };
     }
 
+    if (app.querySelector('#lengkapi')) {
+      app.querySelector('#lengkapi').onclick = async () => {
+        kredensialCek = { nomor_registrasi: hasilDaftar.nomor_registrasi, pin_akses: hasilDaftar.pin_akses };
+        const { data, error } = await sb.rpc('cek_status_ppdb', { p_nomor_registrasi: kredensialCek.nomor_registrasi, p_pin_akses: kredensialCek.pin_akses });
+        if (error || data?.ok === false) { msg = error?.message ?? data.pesan; render(); return; }
+        hasilCek = data; tab = 'lengkap'; msg = ''; render();
+      };
+    }
+    if (app.querySelector('#isi-lengkap')) app.querySelector('#isi-lengkap').onclick = () => { tab = 'lengkap'; msg = ''; render(); };
+    if (tab === 'lengkap' && hasilCek) {
+      wizardView(app.querySelector('#wizard-host'), t, kredensialCek, hasilCek, async () => {
+        const { data } = await sb.rpc('cek_status_ppdb', { p_nomor_registrasi: kredensialCek.nomor_registrasi, p_pin_akses: kredensialCek.pin_akses });
+        if (data?.ok) hasilCek = data;
+        tab = 'cek'; msg = ''; render();
+      });
+    }
+
     const fPpdb = app.querySelector('#f-ppdb');
+    if (fPpdb) {
+      if (nilaiDaftar) for (const [k, v] of Object.entries(nilaiDaftar)) { const e = fPpdb.elements[k]; if (e && 'value' in e) e.value = v; }
+      fPpdb.addEventListener('input', () => { nilaiDaftar = Object.fromEntries(new FormData(fPpdb).entries()); });
+      fPpdb.addEventListener('change', () => { nilaiDaftar = Object.fromEntries(new FormData(fPpdb).entries()); });
+    }
     if (fPpdb) {
       fPpdb.onsubmit = async (e) => {
         e.preventDefault();
         const fd = new FormData(fPpdb);
+        if (String(fd.get('email_wali')).trim().toLowerCase() !== String(fd.get('email_wali2')).trim().toLowerCase()) {
+          msg = 'Email dan ulangi email tidak sama. Periksa kembali agar informasi dari sekolah sampai ke orang tua.'; render(); return;
+        }
         const { data, error } = await sb.rpc('daftar_ppdb_publik', {
           p_tenant_slug: t.slug,
           p_gelombang_id: fd.get('gelombang_id'),
@@ -190,6 +229,7 @@ export async function ppdbPublikView(app, t) {
         });
         if (error || data?.ok === false) { msg = error?.message ?? data.pesan; render(); return; }
         hasilDaftar = data;
+        nilaiDaftar = null;                       // sukses: bersihkan isian dari memori
         msg = '';
         render();
       };
@@ -345,10 +385,11 @@ export async function gelombangPage(el, t, canWrite) {
 // =====================================================================
 // kolom PIN tidak boleh dibaca staf (dicabut di database), jadi tidak memakai select('*')
 const KOLOM_PENDAFTAR = 'id, nomor_registrasi, nama_lengkap, asal_sekolah, nama_wali, no_hp_wali, email_wali, status, status_bayar, '
-  + 'nominal_bayar, nama_pengirim, total_biaya, created_at, gelombang_pendaftaran(nama), jurusan(nama)';
+  + 'nominal_bayar, nama_pengirim, total_biaya, created_at, gelombang_pendaftaran(nama), jurusan(nama), pendaftaran_data_lengkap(diisi_at)';
 
 export async function pendaftarPage(el, t, canWrite) {
-  let rows = [], filter = '', msg = '';
+  let rows = [], filter = '', msg = '', detail = null;
+  const adaLengkap = (r) => (Array.isArray(r.pendaftaran_data_lengkap) ? r.pendaftaran_data_lengkap.length > 0 : !!r.pendaftaran_data_lengkap);
 
   async function load() {
     el.dataset.state = 'loading';
@@ -369,6 +410,11 @@ export async function pendaftarPage(el, t, canWrite) {
       <h1 class="judul">Calon Siswa (PPDB)</h1>
       <p class="sub">Verifikasi pendaftaran dan konfirmasi pembayaran calon siswa baru.</p>
       ${pesan(msg)}
+      ${detail ? `<section class="panel" id="detail-lengkap"><div class="baris"><h3>Data Lengkap: ${esc(detail.nama)}</h3>
+        <button type="button" class="sec kecil" id="d-cetak">Cetak</button><button type="button" class="sec kecil" id="d-tutup">Tutup</button></div>
+        <p class="muted">Data sensitif milik anak di bawah umur. Gunakan hanya untuk keperluan pendaftaran dan jangan dibagikan.</p>
+        ${bagianRingkasan(detail.row, { dariDb: true }).map((b) => `<h4>${esc(b.judul)}</h4><dl class="ringkas">${
+          b.baris.map(([k, v]) => `<div><dt class="muted">${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>`).join('')}</section>` : ''}
       <div class="toolbar">
         <select id="flt-status">
           <option value="">Semua status</option>
@@ -387,6 +433,7 @@ export async function pendaftarPage(el, t, canWrite) {
             <td>${pill(r.status_bayar)}<br><span class="muted">tagihan ${esc(rupiah(r.total_biaya))}</span>${r.nama_pengirim ? `<br><span class="muted">${esc(r.nama_pengirim)} (${esc(rupiah(r.nominal_bayar))})</span>` : ''}</td>
             <td>${pill(r.status)}</td>
             <td class="aksi">
+              ${adaLengkap(r) ? `<button class="sec kecil" data-lengkap="${esc(r.id)}">Data lengkap</button>` : '<span class="muted">data lengkap: belum</span>'}
               ${canWrite && r.status !== 'diterima' ? `
                 <button class="kecil" data-terima="${esc(r.id)}">Terima</button>
                 ${r.status !== 'ditolak' ? `<button class="danger kecil" data-tolak="${esc(r.id)}">Tolak</button>` : ''}
@@ -398,6 +445,15 @@ export async function pendaftarPage(el, t, canWrite) {
     `;
 
     el.querySelector('#flt-status').onchange = (e) => { filter = e.target.value; load(); };
+    if (el.querySelector('#d-tutup')) el.querySelector('#d-tutup').onclick = () => { detail = null; draw(); };
+    if (el.querySelector('#d-cetak')) el.querySelector('#d-cetak').onclick = () => window.print();
+    el.querySelectorAll('[data-lengkap]').forEach((b) => b.onclick = async () => {
+      const { data, error } = await sb.from('pendaftaran_data_lengkap').select('*').eq('pendaftaran_id', b.dataset.lengkap).single();
+      if (error) { msg = error.message; draw(); return; }
+      detail = { nama: rows.find((x) => x.id === b.dataset.lengkap)?.nama_lengkap ?? '', row: data };
+      msg = ''; draw();
+      el.querySelector('#detail-lengkap')?.scrollIntoView({ block: 'start' });
+    });
     el.querySelectorAll('[data-terima]').forEach((b) => b.onclick = async () => {
       const nis = prompt('Masukkan NIS untuk siswa baru ini (opsional, bisa diisi nanti):', '');
       if (nis === null) return;

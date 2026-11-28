@@ -1,4 +1,4 @@
-import { siswaPage, guruPage, mapelPage, tahunPage, kelasPage, jadwalPage, tagihanPage, pembayaranPage, jurusanPage } from './master.js';
+import { siswaPage, guruPage, mapelPage, tahunPage, kelasPage, jadwalPage, tagihanPage, pembayaranPage, jurusanPage, profilPage } from './master.js';
 import { pengajuanPage } from './pengajuan.js';
 import { gelombangPage, pendaftarPage } from './ppdb.js';
 import { kelasSiswaPage } from './kelasSiswa.js';
@@ -8,6 +8,7 @@ import { nilaiPage } from './nilai.js';
 const SEMUA_STAF = ['owner', 'kepala_sekolah', 'admin', 'tu', 'guru'];
 const TULIS = ['owner', 'kepala_sekolah', 'admin', 'tu'];
 const KEUANGAN = ['owner', 'kepala_sekolah', 'admin', 'tu'];
+const MANAJEMEN = ['owner', 'kepala_sekolah', 'admin']; // untuk profil sekolah, pengaturan
 
 // who = peran yang boleh membuka; write = peran yang boleh mengubah (RLS tetap pengaman utama)
 // grup + ikon dipakai menu samping
@@ -31,4 +32,5 @@ export const PAGES = {
   biaya:      { label: 'Biaya',        grup: 'Pendaftaran', ikon: 'tag',    who: TULIS, write: [], render: (el, t, c) => pengajuanPage(el, t, c.roles, 'komponen_biaya') },
   rekening:   { label: 'Rekening',     grup: 'Pendaftaran', ikon: 'bank',   who: TULIS, write: [], render: (el, t, c) => pengajuanPage(el, t, c.roles, 'metode_pembayaran') },
   persetujuan:{ label: 'Persetujuan',  grup: 'Pendaftaran', ikon: 'shield', who: TULIS, write: [], render: (el, t, c) => pengajuanPage(el, t, c.roles, null) },
+  profil:     { label: 'Profil Sekolah', grup: 'Pengaturan', ikon: 'settings', who: MANAJEMEN, write: MANAJEMEN, render: (el, t, c) => profilPage(el, t, c.canWrite) },
 };

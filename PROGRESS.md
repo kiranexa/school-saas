@@ -1,9 +1,22 @@
 # Progress
 
-Terakhir diperbarui: 2026-11-28
+Terakhir diperbarui: 2026-11-29
 
 ## Status singkat
-Fondasi lengkap dan teruji: database multi-tenant dengan RLS, 10 halaman admin, portal siswa, tema terang/gelap, dan tes otomatis. Fitur A (master jurusan, biaya, rekening + persetujuan kepala sekolah) dan fitur B (PPDB online: form publik, cek status, konfirmasi bayar, terima jadi siswa) sudah ada. Migrasi 007 memperbaiki B. Email otomatis belum ada (menunggu keputusan layanan email dan domain). Berikutnya: email otomatis, penempatan kelas (C), pembuatan akun dari admin, portal wali.
+Fondasi lengkap dan teruji: database multi-tenant dengan RLS, 10 halaman admin, portal siswa, tema terang/gelap, dan tes otomatis. Fitur A (master jurusan, biaya, rekening + persetujuan kepala sekolah) dan fitur B (PPDB online: form publik, cek status, konfirmasi bayar, terima jadi siswa) sudah ada. Migrasi 007 memperbaiki B. Wizard Data Lengkap (tahap 1) menyusul di migrasi 008. Upload berkas (tahap 2) dan email otomatis (tahap 3, menunggu keputusan layanan email dan domain) belum ada. Berikutnya: tahap 2 dan 3, penempatan kelas (C), pembuatan akun dari admin, portal wali.
+
+## Selesai (29 November 2026: PPDB tahap 1, Data Lengkap, migrasi 008)
+Rancangan: pendaftaran awal tetap singkat (nama, kontak, email, jurusan); data lengkap diisi orang tua SESUDAH itu lewat wizard dengan nomor registrasi + PIN. Data sensitif dipisah ke tabel 1:1 supaya aksesnya bisa lebih ketat.
+- [x] Tabel `pendaftaran_data_lengkap` (55 isian: identitas, keluarga, alamat, kesehatan, sekolah asal, ayah, ibu, wali). Hanya staf sekolahnya (owner, kepala_sekolah, admin, tu) yang bisa membaca; tidak ada tulis langsung
+- [x] Alamat: form dan draf memakai komponen (jalan, RT/RW 000/000, kelurahan, kecamatan, kabupaten/kota, kode pos); di database disimpan sebagai teks gabungan (format "[jalan], RT/RW [rt_rw], Kel. [..], Kec. [..], [kab/kota], [kode_pos]") DAN komponen jsonb. Penggabungan dilakukan di server
+- [x] Checkbox: domisili sama KK; alamat Ayah & Ibu sama KK; Ibu sama Ayah. Server yang menyalin alamatnya
+- [x] Wizard 3 langkah + ringkasan (`src/pages/ppdbWizard.js`), validasi per langkah dengan scroll ke galat pertama, auto-save 500 ms ke localStorage, resume setelah reload, draf kedaluwarsa 7 hari, tombol Hapus draf, data tersimpan di server bisa dimuat di perangkat lain. PIN hanya di memori, tidak pernah ke localStorage
+- [x] NISN dan NIK unik per sekolah (pendaftar yang ditolak tidak memblokir); kunci PIN yang sama dengan migrasi 007
+- [x] `terima_pendaftar_ppdb` memakai tempat lahir dan alamat domisili dari data lengkap; simpan ulang setelah diterima ikut memperbarui `siswa`
+- [x] Admin: tombol "Data lengkap" per pendaftar (panel detail + cetak). Audit mencatat pengisian TANPA isi data
+- [x] Form awal: kolom "ulangi email" + peringatan email orang tua (bukan email anak); isian form tidak hilang saat galat atau pindah tab (sebelumnya semua terhapus)
+- [x] Spesifikasi isian satu sumber (`src/pages/ppdbFields.js`); spec e2e `15-ppdb-data-lengkap` mengimpornya sehingga SQL dan form yang tidak sinkron akan ketahuan
+- [x] Diuji: 121 pemeriksaan SQL (82 kasus dihasilkan dari spesifikasi form) + 72 uji lama terhadap DB dengan 008 + jalur upgrade dari data 007; 59 pemeriksaan wizard di browser dengan Supabase tiruan + 28 uji lama. Spec 15 (9 tes) belum dijalankan terhadap Supabase asli
 
 ## Selesai (28 November 2026: perbaikan PPDB, migrasi 007)
 Hasil tinjauan atas fitur B (27 November). Temuan yang diperbaiki di `20261127100000_ppdb_perbaikan.sql`:
@@ -52,6 +65,9 @@ Hasil tinjauan atas fitur B (27 November). Temuan yang diperbaiki di `2026112710
 - [x] Dokumentasi: `CLAUDE.md`, `docs/00` sampai `docs/06`, skill proyek di `.claude/skills/`
 
 ## Belum terverifikasi
+- [ ] Migrasi 008 dan spec 15 belum dijalankan terhadap Supabase asli (PostgREST: grant kolom, embed 1:1 `pendaftaran_data_lengkap(diisi_at)` di daftar pendaftar, bentuk hasil rpc)
+- [ ] Tampilan wizard di browser dan HP asli (tidak ada `styles.css` di lingkungan uji; stepper memakai gaya inline sementara)
+- [ ] Hukum: data identitas, kesehatan, dan penghasilan anak/orang tua dikumpulkan dari publik (UU PDP 27/2022). Sekolah perlu kebijakan privasi, masa retensi, dan siapa yang boleh melihat. Belum ada kebijakan retensi/penghapusan di sistem
 - [ ] Migrasi 007 dan semua spec baru (11 sampai 14) belum dijalankan terhadap Supabase asli. Butuh project Supabase uji TERPISAH: `.env.e2e` saat ini menunjuk ke project yang sama dengan production
 - [ ] Perlindungan spam hanya di database (pembatas per sekolah/HP). Belum ada captcha (Cloudflare Turnstile butuh verifikasi di Edge Function)
 - [ ] Fitur A di staging: terapkan migrasi 20261124100000, jalankan `npm run test:e2e` (13 tes baru di spec 11 dan 12 belum pernah dijalankan terhadap Supabase asli)
@@ -61,6 +77,7 @@ Hasil tinjauan atas fitur B (27 November). Temuan yang diperbaiki di `2026112710
 - [ ] Workflow `deploy-db.yml` butuh 3 secret GitHub; belum dipastikan terisi
 
 ## Berikutnya (urut)
+00. [ ] PPDB tahap 2: upload berkas (pas foto, KK, akta, rapor, berkas jalur) ke bucket PRIVAT dengan URL bertanda tangan, langkah 4 di wizard, unggah bukti bayar, tombol terima/tolak bukti. Butuh Edge Function (URL unggah sekali pakai, cek tipe dan ukuran file). PPDB tahap 3: email #1 (ringkasan, biaya, rekening, tautan unik) dan #2 (pembayaran terverifikasi) lewat tabel outbox + Edge Function + `payment_token`; butuh keputusan layanan email dan domain. Setelah email aktif, ubah `EMAIL_OTOMATIS_AKTIF` di `src/pages/ppdb.js`
 0. [ ] Pendaftaran siswa baru: (B2) email otomatis ke orang tua (Edge Function + layanan email; butuh domain pengirim) dan captcha; (C) verifikasi pembayaran, tombol tutup pendaftaran, penempatan ke kelas (tambah `kelas.jurusan_id` dan `kelas.kapasitas`, tampil "X-IPA-1: 34/36")
 1. [ ] Tinjau tampilan di browser dan HP, sesuaikan (warna, huruf, jarak); pastikan 43 tes hijau
 2. [ ] Pembuatan akun siswa/guru dari `/admin` (Edge Function dengan secret key di server; usulan: password sementara yang ditampilkan sekali; keputusan belum final)

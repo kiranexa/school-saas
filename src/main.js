@@ -3,6 +3,7 @@ import { sb } from './supabase.js';
 import { esc, pill, shellPublik, shellApp, bindTema, bindShell, terapkanMerek, ikon } from './ui.js';
 import { PAGES } from './pages/index.js';
 import { ppdbPublikView } from './pages/ppdb.js';
+import { platformTenantsPage } from './pages/platform.js';
 
 const app = document.getElementById('app');
 const STAFF = ['owner', 'kepala_sekolah', 'admin', 'tu', 'guru'];
@@ -35,9 +36,23 @@ async function myRoles(tid) {
   return (data ?? []).map((r) => r.role);
 }
 
+async function isPlatformAdmin() {
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) return false;
+  const { data } = await sb.from('platform_admins').select('role').eq('user_id', user.id).maybeSingle();
+  return data ? ['owner', 'admin'].includes(data.role) : false;
+}
+
 const logoutBtn = `<button id="lo" class="sec">${ikon('logout')}<span>Keluar</span></button>`;
 const bindLogout = () => (document.getElementById('lo').onclick = async () => { await sb.auth.signOut(); location.href = '/'; });
 const tgl = (s) => new Date(s).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+
+async function platformView(canWrite) {
+  app.innerHTML = shellApp({ nama: 'Platform Admin' }, { roles: ['platform_admin'], bisa: [], aktif: 'tenants', body: '<div id="page"></div>' });
+  bindTema(); bindShell(); bindLogout();
+  const page = document.getElementById('page');
+  await platformTenantsPage(page, canWrite);
+}
 
 // ---- 2. Login ----
 function loginView(t, area) {
@@ -150,6 +165,21 @@ async function siswaView(t) {
 
 // ---- 4. Router ----
 (async function main() {
+  const area = location.pathname.split('/')[1];
+
+  // Platform admin area (tidak butuh tenant)
+  if (area === 'platform') {
+    const canWrite = await isPlatformAdmin();
+    if (!canWrite) {
+      app.innerHTML = shellPublik({ nama: 'Platform Admin' }, `<section class="masuk"><h2 class="judul">Akses Ditolak</h2>
+        <p class="sub">Hanya platform owner/admin yang bisa mengakses halaman ini.</p></section>`, logoutBtn);
+      bindTema(); bindLogout();
+      return;
+    }
+    return platformView(canWrite);
+  }
+
+  // Biasa: butuh tenant
   const t = await resolveTenant();
   if (!t) {
     app.innerHTML = `<main class="pub-main"><section class="masuk"><h2 class="judul">Sekolah tidak ditemukan</h2>
@@ -159,7 +189,6 @@ async function siswaView(t) {
   document.title = t.nama;
   terapkanMerek(t);
 
-  const area = location.pathname.split('/')[1];
   if (area === 'daftar') return ppdbPublikView(app, t);
   if (area !== 'admin' && area !== 'siswa') return landing(t);
 

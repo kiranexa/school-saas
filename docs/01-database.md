@@ -51,6 +51,15 @@ Aturan persetujuan (dijaga di database):
 | `daftar_ppdb_publik` (anon) | validasi lengkap, wajib jurusan jika sekolah punya jurusan aktif, pembatas (200/jam/sekolah, 5/HP/hari), salin rincian biaya |
 | `cek_status_ppdb`, `konfirmasi_bayar_ppdb` (anon) | memakai `ppdb_cek_kredensial`: PIN salah dikembalikan sebagai `{ok:false,pesan}` (bukan exception, agar penghitung percobaan tersimpan); 5 kali salah mengunci 30 menit |
 | `terima_pendaftar_ppdb`, `tolak_pendaftar_ppdb` | owner, kepala_sekolah, admin, tu. Terima membuat baris `siswa`, idempoten, mencatat `audit_log` (tanpa PIN). Pendaftar belum bayar hanya bisa diterima dengan `p_konfirmasi_lunas = true` |
+### Data lengkap (migrasi 20261128100000)
+| Tabel / fungsi | Keterangan |
+|---|---|
+| `pendaftaran_data_lengkap` | 1:1 dengan `pendaftaran_siswa` (PK = `pendaftaran_id`), memuat 55 isian wizard. Alamat: kolom `alamat_*` (teks gabungan, untuk tampil/cetak) + `alamat_*_komponen` (jsonb, untuk filter/zonasi). Baca: staf sekolahnya saja; tidak ada tulis langsung |
+| `simpan_data_lengkap_ppdb(nomor, pin, data)` (anon) | validasi ketat di server (angka 10/16/8 digit, RT/RW 000/000, kode pos 5 digit, pilihan, rentang), menolak kunci tak dikenal, menyalin alamat yang "sama", mengecek NISN/NIK unik per sekolah (yang ditolak tidak memblokir), upsert, menyinkronkan tempat lahir/NIK/asal sekolah/alamat ke pendaftar (dan ke `siswa` bila sudah diterima), mencatat audit TANPA isi data |
+| `ambil_data_lengkap_ppdb(nomor, pin)` (anon) | mengembalikan data tersimpan (alamat sebagai komponen) agar bisa dilanjutkan di perangkat lain |
+| `ppdb_v_*`, `ppdb_alamat_gabung` | fungsi validasi internal, tertutup dari klien |
+- Isian wizard punya DUA tempat yang harus sama: kolom + validasi di migrasi dan `src/pages/ppdbFields.js`. Menambah/mengubah isian = migrasi baru (ALTER TABLE + `create or replace` fungsi simpan) + ubah `ppdbFields.js`; spec `15-ppdb-data-lengkap` mengimpor `ppdbFields.js` dan gagal bila keduanya tidak sinkron.
+- Data ini sangat sensitif (NIK, KK, kesehatan, penghasilan, anak di bawah umur): jangan masuk `audit_log`, jangan di-`select('*')` ke klien publik, dan bila nanti ada berkas, simpan di bucket privat.
 - Menambah kolom baru di `pendaftaran_siswa`: tambahkan juga `grant select (kolom)` untuk `authenticated`, dan perbarui `KOLOM_PENDAFTAR` di `src/pages/ppdb.js` (halaman admin tidak memakai `select('*')`).
 
 ## Fungsi dan trigger

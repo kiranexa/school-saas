@@ -36,6 +36,11 @@ Absensi, nilai, dan penempatan siswa memakai halaman tersendiri. Pola penting:
 - Penyimpanan massal lewat RPC agar atomik dan tetap diperiksa RLS.
 - Atribut `data-state` (`loading`/`ready`) pada kontainer `#page` sebagai penanda untuk tes; pemuatan yang tumpang tindih diatur dengan penanda urutan agar hanya yang terbaru yang menggambar.
 
+### PPDB: formulir awal dan Data Lengkap (`src/pages/ppdb.js`, `ppdbWizard.js`, `ppdbFields.js`)
+- Formulir awal singkat di `/daftar`; isian disimpan di memori halaman sehingga tidak hilang saat galat atau pindah tab. Kolom email punya peringatan dan kolom "ulangi email". `EMAIL_OTOMATIS_AKTIF` (false) mengatur teks yang tidak menjanjikan email sebelum fiturnya ada.
+- Wizard Data Lengkap dibuka dari kartu status (nomor registrasi + PIN, PIN hanya di memori). `ppdbFields.js` adalah satu-satunya definisi isian: langkah, label, jenis, aturan, dan logika tampil. `ppdbWizard.js` hanya merender dan menyimpan draf (`ppdb-draft:<slug>:<nomor>`, tanpa PIN, kedaluwarsa 7 hari).
+- Halaman admin Calon Siswa tidak memakai `select('*')` (kolom PIN dicabut); gunakan `KOLOM_PENDAFTAR`.
+
 ### Biaya, Rekening, Persetujuan (`src/pages/pengajuan.js`)
 Satu modul untuk tiga halaman (`pengajuanPage(el, t, roles, entitas)`; `entitas` null = halaman Persetujuan). Menampilkan data berlaku, pengajuan menunggu, dan riwayat. Tombol mengikuti peran (admin/tu: ajukan, batalkan; kepala_sekolah/owner: setujui, tolak) tetapi penjagaan sebenarnya di fungsi database. Menambah jenis data yang butuh persetujuan: tambahkan entri di `ENTITAS`, cabang di `pj_normalisasi`, `pj_ambil`, dan `setujui_pengajuan` (migrasi baru), dan daftarkan di `pengajuan_perubahan.entitas`.
 

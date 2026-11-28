@@ -1,5 +1,6 @@
 import { sb } from '../supabase.js';
 import { crudPage } from '../crud.js';
+import { esc } from '../ui.js';
 
 const opt = (arr) => arr.map((v) => ({ value: v, label: v }));
 const JK = [{ value: '', label: '—' }, { value: 'L', label: 'L' }, { value: 'P', label: 'P' }];
@@ -166,3 +167,55 @@ export const jurusanPage = (el, t, w) => crudPage(el, t, w, {
     { name: 'aktif', label: 'Aktif (tampil di form pendaftaran)', type: 'checkbox' },
   ],
 });
+
+export const profilPage = async (el, t, canWrite) => {
+  let tenant = t;
+  let msg = '';
+
+  async function save(e) {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const rec = {
+      nama: fd.get('nama').trim() || null,
+      npsn: fd.get('npsn').trim() || null,
+      jenjang: fd.get('jenjang').trim() || null,
+      alamat: fd.get('alamat').trim() || null,
+      logo_url: fd.get('logo_url').trim() || null,
+    };
+    let tema;
+    try { tema = JSON.parse(fd.get('tema') || '{}'); } catch { msg = 'Format JSON tema tidak valid.'; draw(); return; }
+    rec.tema = tema;
+
+    const { error } = await sb.from('tenants').update(rec).eq('id', t.id);
+    if (error) { msg = error.message; draw(); return; }
+    tenant = { ...tenant, ...rec };
+    // update sidebar nama sekolah (di shellApp)
+    const sidebarNama = document.querySelector('.sekolah');
+    if (sidebarNama) sidebarNama.textContent = tenant.nama;
+    // update document title
+    document.title = tenant.nama;
+    // update brand color jika tema berubah
+    if (rec.tema?.accent) document.documentElement.style.setProperty('--brand', rec.tema.accent);
+    msg = 'Profil sekolah tersimpan.';
+    draw();
+  }
+
+  function draw() {
+    const temaJson = JSON.stringify(tenant?.tema ?? {}, null, 2);
+    el.innerHTML = `
+      <h1 class="judul">Profil Sekolah</h1>
+      <p class="msg ${msg.startsWith('Profil') ? 'ok' : 'err'}">${esc(msg)}</p>
+      <form id="pf" class="panel">
+        <label>Nama Sekolah *<input name="nama" required value="${esc(tenant?.nama)}"></label>
+        <label>NPSN<input name="npsn" value="${esc(tenant?.npsn ?? '')}"></label>
+        <label>Jenjang (SD/SMP/SMA/SMK)<input name="jenjang" value="${esc(tenant?.jenjang ?? '')}"></label>
+        <label>Alamat<textarea name="alamat" rows="3">${esc(tenant?.alamat ?? '')}</textarea></label>
+        <label>Logo URL<input name="logo_url" type="url" value="${esc(tenant?.logo_url ?? '')}"></label>
+        <label>Tema (JSON) — warna, font landing page<textarea name="tema" rows="6">${esc(temaJson)}</textarea></label>
+        <div class="baris"><button>Simpan</button></div>
+      </form>`;
+    document.getElementById('pf').onsubmit = save;
+  }
+
+  draw();
+};
