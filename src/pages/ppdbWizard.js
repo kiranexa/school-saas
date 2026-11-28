@@ -133,9 +133,10 @@ export async function wizardView(el, t, kred, status, keluar) {
     if (selesai) {
       el.innerHTML = `<div class="panel" id="wizard-selesai" style="border-left:4px solid var(--brand)"><h2>Data Lengkap Tersimpan</h2>
         <p>Terima kasih. Data calon siswa <b>${esc(status.nama_lengkap)}</b> (${esc(status.nomor_registrasi)}) sudah kami terima.
-        Anda masih dapat membukanya kembali untuk memperbarui data selama pendaftaran belum ditolak.</p>
-        <div class="baris"><button type="button" id="w-ubah">Ubah Data</button><button type="button" class="sec" id="w-keluar">Kembali ke Status</button></div></div>`;
-      el.querySelector('#w-ubah').onclick = () => { selesai = false; langkah = 0; setuju = false; gambar(); };
+        Data tidak dapat diubah setelah dikirim.</p>
+        <p class="muted">Instruksi pembayaran dan tautan konfirmasi akan dikirim ke email orang tua/wali.
+        Silakan periksa email untuk melanjutkan proses pembayaran.</p>
+        <div class="baris"><button type="button" class="sec" id="w-keluar">Kembali ke Status</button></div></div>`;
       el.querySelector('#w-keluar').onclick = () => keluar();
       return;
     }

@@ -4,7 +4,7 @@ import { wizardView } from './ppdbWizard.js';
 import { bagianRingkasan } from './ppdbFields.js';
 
 // Ubah ke true setelah email otomatis (tahap 3) aktif; sampai itu, jangan menjanjikan email ke orang tua.
-const EMAIL_OTOMATIS_AKTIF = false;
+const EMAIL_OTOMATIS_AKTIF = true;
 const CATATAN_EMAIL = EMAIL_OTOMATIS_AKTIF
   ? 'Penting: Masukkan alamat email aktif Orang Tua/Wali (bukan email anak). Instruksi pembayaran dan status verifikasi akan dikirim ke email ini.'
   : 'Penting: Masukkan alamat email aktif Orang Tua/Wali (bukan email anak). Email ini dipakai sekolah untuk menghubungi Anda.';
@@ -18,6 +18,9 @@ const rincianBiaya = (list) => {
     <p><strong>Total biaya wajib:</strong> <span id="total-biaya">${esc(rupiah(total))}</span></p>`;
 };
 const tgl = (s) => (s ? new Date(s).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
+
+// Payment upload state
+let buktiUpload = { buktiId: null, uploadUrl: null, file: null, uploading: false };
 
 // =====================================================================
 // 1. HALAMAN PUBLIK: FORMULIR PPDB & CEK STATUS / KONFIRMASI BAYAR
@@ -146,21 +149,43 @@ export async function ppdbPublikView(app, t) {
                     ${rekening.map((r) => `<li><b>${esc(r.penyedia)}</b> ${r.nomor ? `— <code>${esc(r.nomor)}</code>` : ''} ${r.atas_nama ? `(a.n. ${esc(r.atas_nama)})` : ''} ${r.instruksi ? `<br><span class="muted">${esc(r.instruksi)}</span>` : ''}</li>`).join('')}
                   </ul>
                 ` : ''}
-                <form id="f-bayar">
-                  <div class="cols">
-                    ${rekening.length ? `
-                      <label>Tujuan pembayaran *
-                        <select name="metode_bayar_id" required>
-                          ${rekening.map((r) => `<option value="${esc(r.id)}">${esc(r.penyedia)} ${r.nomor ? `(${esc(r.nomor)})` : ''}</option>`).join('')}
-                        </select>
-                      </label>
-                    ` : '<input type="hidden" name="metode_bayar_id" value="">'}
-                    <label>Nominal ditransfer (Rp) *<input name="nominal_bayar" type="number" min="1" value="${esc(hasilCek.total_biaya)}" required></label>
-                    <label>Nama pengirim / rekening *<input name="nama_pengirim" value="${esc(hasilCek.nama_pengirim ?? '')}" required></label>
-                    <label>Catatan / nomor referensi<input name="catatan_bayar" placeholder="Opsional"></label>
+                ${buktiUpload.buktiId ? `
+                  <div class="panel" style="margin-bottom:1rem;background:#f8f9fa;border-left:4px solid var(--brand)">
+                    <h5>Bukti Transfer</h5>
+                    ${buktiUpload.uploading ? `
+                      <p class="muted">Mengunggah bukti transfer...</p>
+                    ` : buktiUpload.file ? `
+                      <p>File dipilih: <b>${esc(buktiUpload.file.name)}</b> (${(buktiUpload.file.size / 1024).toFixed(1)} KB)</p>
+                      <div class="baris" style="margin-top:.5rem">
+                        <button type="button" id="upload-bukti" class="">Unggah Bukti</button>
+                        <button type="button" class="sec kecil" id="ganti-bukti">Ganti File</button>
+                      </div>
+                    ` : `
+                      <p class="muted">Belum ada bukti transfer diunggah.</p>
+                      <div class="baris" style="margin-top:.5rem">
+                        <label class="sec">Pilih File Bukti (JPG/PNG/PDF, max 10MB)
+                          <input type="file" id="file-bukti" accept="image/jpeg,image/png,application/pdf" style="display:none">
+                        </label>
+                      </div>
+                    `}
                   </div>
-                  <div class="baris" style="margin-top:1rem"><button>Kirim Konfirmasi Bayar</button></div>
-                </form>
+                ` : `
+                  <form id="f-bayar" class="panel">
+                    <div class="cols">
+                      ${rekening.length ? `
+                        <label>Tujuan pembayaran *
+                          <select name="metode_bayar_id" required>
+                            ${rekening.map((r) => `<option value="${esc(r.id)}">${esc(r.penyedia)} ${r.nomor ? `(${esc(r.nomor)})` : ''}</option>`).join('')}
+                          </select>
+                        </label>
+                      ` : '<input type="hidden" name="metode_bayar_id" value="">'}
+                      <label>Nominal ditransfer (Rp) *<input name="nominal_bayar" type="number" min="1" value="${esc(hasilCek.total_biaya)}" required></label>
+                      <label>Nama pengirim / rekening *<input name="nama_pengirim" value="${esc(hasilCek.nama_pengirim ?? '')}" required></label>
+                      <label>Catatan / nomor referensi<input name="catatan_bayar" placeholder="Opsional"></label>
+                    </div>
+                    <div class="baris" style="margin-top:1rem"><button id="btn-konfirmasi-bayar">Kirim Konfirmasi & Dapatkan Link Upload</button></div>
+                  </form>
+                `}
               ` : ''}
             </div>
           ` : ''}
@@ -260,7 +285,7 @@ export async function ppdbPublikView(app, t) {
       fBayar.onsubmit = async (e) => {
         e.preventDefault();
         const fd = new FormData(fBayar);
-        const { data: hasil, error } = await sb.rpc('konfirmasi_bayar_ppdb', {
+        const { data: hasil, error } = await sb.rpc('konfirmasi_bayar_ppdb_upload', {
           p_nomor_registrasi: kredensialCek.nomor_registrasi,
           p_pin_akses: kredensialCek.pin_akses,
           p_metode_bayar_id: fd.get('metode_bayar_id') || null,
@@ -269,12 +294,82 @@ export async function ppdbPublikView(app, t) {
           p_catatan_bayar: fd.get('catatan_bayar') || null,
         });
         if (error || hasil?.ok === false) { msg = error?.message ?? hasil.pesan; render(); return; }
+        buktiUpload = { buktiId: hasil.bukti_id, uploadUrl: hasil.upload_url, file: null, uploading: false };
         const { data } = await sb.rpc('cek_status_ppdb', {
           p_nomor_registrasi: kredensialCek.nomor_registrasi,
           p_pin_akses: kredensialCek.pin_akses,
         });
         hasilCek = data;
-        msg = 'Tersimpan. Konfirmasi pembayaran telah dikirim.';
+        msg = 'Konfirmasi terkirim. Silakan unggah bukti transfer.';
+        render();
+      };
+    }
+
+    // File input handler
+    const fileInput = app.querySelector('#file-bukti');
+    if (fileInput) {
+      fileInput.onchange = (e) => {
+        const file = e.target.files?.[0];
+        if (file) {
+          if (file.size > 10485760) { msg = 'Ukuran file maksimal 10 MB'; fileInput.value = ''; render(); return; }
+          if (!['image/jpeg', 'image/png', 'application/pdf'].includes(file.type)) { msg = 'Format file tidak didukung (JPG, PNG, PDF)'; fileInput.value = ''; render(); return; }
+          buktiUpload.file = file;
+          msg = '';
+          render();
+        }
+      };
+      const label = fileInput.closest('label');
+      if (label) label.onclick = () => fileInput.click();
+    }
+
+    // Upload bukti button
+    const uploadBtn = app.querySelector('#upload-bukti');
+    if (uploadBtn) {
+      uploadBtn.onclick = async () => {
+        if (!buktiUpload.file || !buktiUpload.buktiId) return;
+        buktiUpload.uploading = true;
+        render();
+        try {
+          const uploadRes = await fetch(`${sb.supabaseUrl}/storage/v1/object/ppdb-bukti/${buktiUpload.uploadUrl.split('/').pop()}`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${(await sb.auth.getSession()).data.session?.access_token}`,
+              'Content-Type': buktiUpload.file.type,
+            },
+            body: buktiUpload.file,
+          });
+          if (!uploadRes.ok) throw new Error('Upload gagal: ' + await uploadRes.text());
+
+          const { data: done, error: doneErr } = await sb.rpc('selesai_upload_bukti_ppdb', {
+            p_bukti_id: buktiUpload.buktiId,
+            p_content_type: buktiUpload.file.type,
+            p_size_bytes: buktiUpload.file.size,
+          });
+          if (doneErr || done?.ok === false) throw new Error(doneErr?.message ?? done?.pesan);
+
+          buktiUpload = { buktiId: buktiUpload.buktiId, uploadUrl: buktiUpload.uploadUrl, file: buktiUpload.file, uploading: false };
+          const { data } = await sb.rpc('cek_status_ppdb', {
+            p_nomor_registrasi: kredensialCek.nomor_registrasi,
+            p_pin_akses: kredensialCek.pin_akses,
+          });
+          hasilCek = data;
+          msg = 'Bukti transfer berhasil diunggah. Menunggu verifikasi sekolah.';
+          render();
+        } catch (e) {
+          buktiUpload.uploading = false;
+          msg = String(e);
+          render();
+        }
+      };
+    }
+
+    // Ganti bukti button
+    const gantiBtn = app.querySelector('#ganti-bukti');
+    if (gantiBtn) {
+      gantiBtn.onclick = () => {
+        buktiUpload.file = null;
+        const fi = app.querySelector('#file-bukti');
+        if (fi) fi.value = '';
         render();
       };
     }
@@ -388,7 +483,7 @@ const KOLOM_PENDAFTAR = 'id, nomor_registrasi, nama_lengkap, asal_sekolah, nama_
   + 'nominal_bayar, nama_pengirim, total_biaya, created_at, gelombang_pendaftaran(nama), jurusan(nama), pendaftaran_data_lengkap(diisi_at)';
 
 export async function pendaftarPage(el, t, canWrite) {
-  let rows = [], filter = '', msg = '', detail = null;
+  let rows = [], filter = '', msg = '', detail = null, buktiDetail = null;
   const adaLengkap = (r) => (Array.isArray(r.pendaftaran_data_lengkap) ? r.pendaftaran_data_lengkap.length > 0 : !!r.pendaftaran_data_lengkap);
 
   async function load() {
@@ -405,11 +500,43 @@ export async function pendaftarPage(el, t, canWrite) {
     el.dataset.state = 'ready';
   }
 
+  async function loadBukti(pendaftaranId) {
+    const { data, error } = await sb.from('pendaftaran_bukti_bayar')
+      .select('*')
+      .eq('pendaftaran_id', pendaftaranId)
+      .order('dikirim_at', { ascending: false })
+      .limit(5);
+    if (error) return [];
+    return data ?? [];
+  }
+
   function draw() {
     el.innerHTML = `
       <h1 class="judul">Calon Siswa (PPDB)</h1>
       <p class="sub">Verifikasi pendaftaran dan konfirmasi pembayaran calon siswa baru.</p>
       ${pesan(msg)}
+      ${buktiDetail ? `<section class="panel" id="detail-bukti"><div class="baris"><h3>Bukti Transfer: ${esc(buktiDetail.nama)}</h3>
+        <button type="button" class="sec kecil" id="b-tutup">Tutup</button></div>
+        ${buktiDetail.bukti.map((b) => `
+          <div class="panel" style="margin-top:1rem">
+            <p><strong>Status:</strong> ${pill(b.status)} · <strong>Nominal:</strong> ${esc(rupiah(b.nominal_bayar))} · <strong>Pengirim:</strong> ${esc(b.nama_pengirim)}</p>
+            <p><strong>Metode:</strong> ${esc(b.metode_bayar_id)} · <strong>Dikirim:</strong> ${new Date(b.dikirim_at).toLocaleString('id-ID')}</p>
+            ${b.bukti_path ? `<p><strong>File:</strong> ${b.bukti_content_type} (${(b.bukti_size_bytes / 1024).toFixed(1)} KB)
+              <button type="button" class="kecil" data-bukti-download="${esc(b.id)}">Unduh</button></p>` : '<p class="muted">Belum upload file</p>'}
+            ${b.catatan_bayar ? `<p><strong>Catatan:</strong> ${esc(b.catatan_bayar)}</p>` : ''}
+            ${b.status === 'menunggu' || b.status === 'menunggu_upload' ? `
+              <div class="baris" style="margin-top:.5rem">
+                <button type="button" class="" data-bukti-setujui="${esc(b.id)}">Setujui</button>
+                <button type="button" class="danger kecil" data-bukti-tolak="${esc(b.id)}">Tolak</button>
+              </div>
+            ` : b.status === 'diverifikasi' ? `
+              <p class="muted">Disetujui oleh ${b.diverifikasi_oleh ? 'staf' : '—'} pada ${b.diverifikasi_at ? new Date(b.diverifikasi_at).toLocaleString('id-ID') : '—'}</p>
+            ` : b.status === 'ditolak' ? `
+              <p class="muted">Ditolak pada ${b.diverifikasi_at ? new Date(b.diverifikasi_at).toLocaleString('id-ID') : '—'}</p>
+              ${b.catatan_verifikasi ? `<p><strong>Alasan:</strong> ${esc(b.catatan_verifikasi)}</p>` : ''}
+            ` : ''}
+          </div>
+        `).join('')}</section>` : ''}
       ${detail ? `<section class="panel" id="detail-lengkap"><div class="baris"><h3>Data Lengkap: ${esc(detail.nama)}</h3>
         <button type="button" class="sec kecil" id="d-cetak">Cetak</button><button type="button" class="sec kecil" id="d-tutup">Tutup</button></div>
         <p class="muted">Data sensitif milik anak di bawah umur. Gunakan hanya untuk keperluan pendaftaran dan jangan dibagikan.</p>
@@ -434,6 +561,7 @@ export async function pendaftarPage(el, t, canWrite) {
             <td>${pill(r.status)}</td>
             <td class="aksi">
               ${adaLengkap(r) ? `<button class="sec kecil" data-lengkap="${esc(r.id)}">Data lengkap</button>` : '<span class="muted">data lengkap: belum</span>'}
+              ${r.status_bayar !== 'lunas' && r.status_bayar !== 'belum_bayar' ? `<button class="sec kecil" data-bukti="${esc(r.id)}">Bukti</button>` : ''}
               ${canWrite && r.status !== 'diterima' ? `
                 <button class="kecil" data-terima="${esc(r.id)}">Terima</button>
                 ${r.status !== 'ditolak' ? `<button class="danger kecil" data-tolak="${esc(r.id)}">Tolak</button>` : ''}
@@ -445,6 +573,7 @@ export async function pendaftarPage(el, t, canWrite) {
     `;
 
     el.querySelector('#flt-status').onchange = (e) => { filter = e.target.value; load(); };
+    if (el.querySelector('#b-tutup')) el.querySelector('#b-tutup').onclick = () => { buktiDetail = null; draw(); };
     if (el.querySelector('#d-tutup')) el.querySelector('#d-tutup').onclick = () => { detail = null; draw(); };
     if (el.querySelector('#d-cetak')) el.querySelector('#d-cetak').onclick = () => window.print();
     el.querySelectorAll('[data-lengkap]').forEach((b) => b.onclick = async () => {
@@ -453,6 +582,49 @@ export async function pendaftarPage(el, t, canWrite) {
       detail = { nama: rows.find((x) => x.id === b.dataset.lengkap)?.nama_lengkap ?? '', row: data };
       msg = ''; draw();
       el.querySelector('#detail-lengkap')?.scrollIntoView({ block: 'start' });
+    });
+    el.querySelectorAll('[data-bukti]').forEach((b) => b.onclick = async () => {
+      const pendaftaranId = b.dataset.bukti;
+      const r = rows.find((x) => x.id === pendaftaranId);
+      const bukti = await loadBukti(pendaftaranId);
+      buktiDetail = { nama: r?.nama_lengkap ?? '', bukti };
+      msg = ''; draw();
+      el.querySelector('#detail-bukti')?.scrollIntoView({ block: 'start' });
+    });
+    el.querySelectorAll('[data-bukti-download]').forEach((b) => b.onclick = async () => {
+      const { data, error } = await sb.rpc('get_bukti_download_url', { p_bukti_id: b.dataset.buktiDownload });
+      if (error || data?.ok === false) { msg = error?.message ?? data?.pesan; draw(); return; }
+      const { data: signed } = await sb.storage.from('ppdb-bukti').createSignedUrl(data.path, 60);
+      if (signed?.signedUrl) window.open(signed.signedUrl, '_blank');
+      else msg = 'Gagal membuat tautan unduh';
+      draw();
+    });
+    el.querySelectorAll('[data-bukti-setujui]').forEach((b) => b.onclick = async () => {
+      const alasan = prompt('Catatan verifikasi (opsional):', '');
+      if (alasan === null) return;
+      const { data, error } = await sb.rpc('verifikasi_bukti_ppdb', { p_bukti_id: b.dataset.buktiSetujui, p_setujui: true, p_catatan: alasan });
+      if (error) { msg = error.message; draw(); return; }
+      msg = data.message;
+      // Refresh bukti detail
+      const pendingId = buktiDetail?.bukti?.find((x) => x.id === b.dataset.buktiSetujui)?.pendaftaran_id;
+      if (pendingId) {
+        buktiDetail.bukti = await loadBukti(pendingId);
+      }
+      draw();
+      await load();
+    });
+    el.querySelectorAll('[data-bukti-tolak]').forEach((b) => b.onclick = async () => {
+      const alasan = prompt('Alasan penolakan (wajib):', '');
+      if (!alasan) return;
+      const { data, error } = await sb.rpc('verifikasi_bukti_ppdb', { p_bukti_id: b.dataset.buktiTolak, p_setujui: false, p_catatan: alasan });
+      if (error) { msg = error.message; draw(); return; }
+      msg = data.message;
+      const pendingId = buktiDetail?.bukti?.find((x) => x.id === b.dataset.buktiTolak)?.pendaftaran_id;
+      if (pendingId) {
+        buktiDetail.bukti = await loadBukti(pendingId);
+      }
+      draw();
+      await load();
     });
     el.querySelectorAll('[data-terima]').forEach((b) => b.onclick = async () => {
       const nis = prompt('Masukkan NIS untuk siswa baru ini (opsional, bisa diisi nanti):', '');
